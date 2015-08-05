@@ -1,9 +1,9 @@
 # SCA Progress Service
 
-## Specs
+## Specifications
 
 ### Progress Message
-Progress reporting of job is critical to provide user accurate image of what the system is doing, has done, and will be doing, and gives user understanding of how long the job till take, even if it's just a ballpark estimate occasionally. The same information also allows portal to decide if it should send completion notification (there is no point of sending completion notification if the job takes 10 seconds), or when to send notification(if a job takes 1 week to complete, maybe we should send *progress* notification that the job is progressing).
+Progress reporting of job is critical to provide user accurate view of what the system is doing, has done, and will be doing, and gives user understanding of how long the job till take, even if it's just a ballpark estimate occasionally. The same information also allows other services to decide if it should send completion notification (there is no point of sending completion notification if the job only takes 10 seconds), or send more notifications (if a job takes 1 week to complete, maybe we should send *progress* notifications to let user know that we are working on it).
 
 Job progress is inherently hierarchical. For example, portal might know that, the entire job consists of 3 big parts (1 to thaw/stage input, 2 to run the workflow, and 3 to do some post processing) although it might not know the details on each sub steps. Recursively, for each sub steps, it might know how many parallel jobs to run, but it might not know the detail on each job. So on..
 
@@ -35,7 +35,7 @@ Progress parameters are omitted because it's computed by aggregating child's pro
 
 weight parameter (optional - defaulted to 1) is used to compute the aggregated parent progress by adjusting each child's progress multiplied by the weight. This allows better estimation of overall progress percentage (and completion time estimate). 
 
-### Progress Service
+### Progress Information Aggregation
 
 Once we have various system posting progress message, we need a service responsible for consuming such messages and aggregate them and make it available for other services. Such service will be responsible for following.
 Persist incoming progress message from AMQP (key/value where key is routing key and value is the progress json stored in redis). It sets certain missing values automatically.
@@ -63,28 +63,44 @@ function update(key) {
     set_node(key, node); //let set_node set other missing fields
   }
 
-	var children = query_children(key);
+  var children = query_children(key);
   if(children.length == 0) {
-    //either this is an edge node, or children haven't reported yet
+	//either this is an edge node, or children haven't reported yet
   } else {
-  	//do weighted aggregation
-    var total_progress = 0;
-    var total_weight = 0;
-    children.forEach(function(child_key) {
-    			var child = get_node(child_key);
-    			total_progress += child.progress * child.weight;
-    			total_weight += child.weight;
-    });
-    node.progress = total_progress / total_weight;
+	//do weighted aggregation
+	var total_progress = 0;
+	var total_weight = 0;
+	children.forEach(function(child_key) {
+		var child = get_node(child_key);
+		total_progress += child.progress * child.weight;
+		total_weight += child.weight;
+	});
+	node.progress = total_progress / total_weight;
   }
+  
+  //compute when this node should complete.
+  node.eta = (Date.now() - node.start_time)*node.progress + Date.now();
+  
   set_node(key, node);
   
   //now recurse up
   var parent_key = get_parent_key(key); //just strip the last token
   if(!is_root_key(parent_key)) { //top level key "portal." is just to group different types of progress - so I don't need to process this.
-  		update(parent_key);
+  	update(parent_key);
   }
 }
 ```
 
 set_node() above sets "start_time" at each parent node. This value can be used to estimate the time of completion by combining current time, and progress percentage. 
+
+### Progress Information Publishing
+
+The same service consuming & aggregating the progress message will allow internal services to query progress information. It can specify the "root" of progress routing key (like "portal.job123") and it will return the progress information on that node, and its children (depth can be specified by the client).
+
+Once the progress information is loaded, client can then subscribe to all subsequent updates through socketio connection under a particular routing key.
+
+### Progress Information GUI
+
+We will implement an Angular directive for progress UI where user can interact (dig down to see progress information at deeper level). The directive can subscribe to progress/socketio to automatically update progress status. 
+
+
