@@ -104,3 +104,6 @@ Once the progress information is loaded, client can then subscribe to all subseq
 We will implement an Angular directive for progress UI where user can interact (dig down to see progress information at deeper level). The directive can subscribe to progress/socketio to automatically update progress status. 
 
 
+## TODOS
+
+Should this service be responsible for the status of the jobs / tasks? Or should we have a separate service just for that? I tend to think we should make progress service responsible for keeping up with "status" information.. but I am not exactly sure.
