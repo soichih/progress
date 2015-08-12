@@ -1,0 +1,22 @@
+{
+  "name": "isdp",
+  "version": "0.0.0",
+  "description": "ISDP multi-file download service",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.iu.edu:hayashis/isdp.git"
+  },
+  "keywords": [
+    "ISDP",
+    "HSI"
+  ],
+  "author": "Soichi Hayashi <hayashis@iu.edu>",
+  "license": "BSD"
+}
