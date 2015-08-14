@@ -1,50 +1,51 @@
 'use strict';
 
+//node
 var fs = require('fs');
 
+//contrib
 var express = require('express');
-var jwt = require('express-jwt');
 var bodyParser = require('body-parser');
+var winston = require('winston');
+var expressWinston = require('express-winston');
 
+//mine
 var config = require('./config/config');
+var controllers = require('./controllers');
 
+//init express app
 var app = express();
+app.use(bodyParser.json()); 
+app.use(expressWinston.logger(config.logger.winston));
 
-var jwtac = jwt({secret: config.jwt.public_key});
-
-app.use(bodyParser.json()); //parse application/json
-app.use(config.logger.express);
-
-var handlers = {
-    health: function(req, res) {
-        //TODO
-        res.json({status: 'running'});
-    },
-    request: require('./controllers/request').request,
-    _404: function(req, res) {
-        var err = new Error('Not Found');
-        err.status = 404;
-        next(err);
-    },
-    _error: function(err, req, res, next) {
-        console.dir(err);
-        res.status(err.status || 500);
-        res.json({message: err.message});
-    },
+//jwt auth is optional
+if(config.express.jwt) {
+    var jwt = require('express-jwt');
+    app.use(jwt(config.express.jwt));
 }
+
 //setup routes
-app.get('/health', handlers.health);
-app.post('/request', jwtac, handlers.request);
+app.get('/health', controllers.health);
+app.post('/request', controllers.request);
 
-//some extra handlers
-app.use(handlers._404); //for all else .. 404
-app.use(handlers._error); 
+/*
+app.get('/test', function(req, res) {
+    throw new Error("test error");
+});
+*/
 
-function start() {
-    var port = process.env.PORT || '8080';
-    app.listen(port);
-    console.log("Express server listening on port %d in %s mode", port, app.settings.env);
-}
+//error handling
+app.use(expressWinston.errorLogger(config.logger.winston)); 
+app.use(function(err, req, res, next) {
+    res.status(err.status || 500);
+    res.json({message: err.message, /*stack: err.stack*/}); //let's hide callstack for now
+});
 
-exports.start = start;
 exports.app = app;
+exports.start = function() {
+    var port = process.env.PORT || config.express.port || '8080';
+    app.listen(port);
+    console.log("ISDP request handler listening on port %d in %s mode", port, app.settings.env);
+};
+
+

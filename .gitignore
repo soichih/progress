@@ -1,3 +1,6 @@
-nohup_server.out
+nohup_server.*
 node_modules
 config
+*.log
+test.sh
+dev.sh

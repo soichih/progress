@@ -7,5 +7,17 @@ token="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE0MTY5MjkwNjEsImp0aSI6Ijgw
 curl -H "Accept: application/json" \
     -H "Content-type: application/json" \
     -H "Authorization: Bearer $token" \
-    -X POST -d '{"notification_email":"hayashis@iu.edu", "files": [ "intopo/historic/geopdf/250k/in_evansville_156913_1957_250000_geo.zip", "intopo/historic/geopdf/250k/in_evansville_156914_1957_250000_geo.zip", "intopo/historic/geopdf/250k/in_evansville_156915_1957_250000_geo.zip", "intopo/historic/geopdf/250k/in_evansville_156916_1961_250000_geo.zip", "intopo/historic/geopdf/250k/in_evansville_156917_1954_250000_geo.zip"]}' \
+    -X POST -d '
+{
+    "notification_email": "hayashis@iu.edu", 
+    "files": [ 
+        "intopo/historic/geopdf/250k/in_evansville_156913_1957_250000_geo.zip", 
+        "intopo/historic/geopdf/250k/in_evansville_156914_1957_250000_geo.zip", 
+        "intopo/historic/geopdf/250k/in_evansville_156915_1957_250000_geo.zip", 
+        "intopo/historic/geopdf/250k/in_evansville_156916_1961_250000_geo.zip", 
+        "intopo/historic/geopdf/250k/in_evansville_156917_1954_250000_geo.zip",
+        "intopo/historic/geopdf/250k/_noexist.zip",
+        "/hpss/h/a/hayashis/iso/ubuntu-14.04-server-amd64.iso"
+    ]
+}' \
     http://localhost:12346/request

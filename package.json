@@ -2,7 +2,7 @@
   "name": "isdp",
   "version": "0.0.0",
   "description": "ISDP multi-file download service",
-  "main": "app.js",
+  "main": "index.js",
   "directories": {
     "test": "test"
   },
@@ -28,7 +28,8 @@
     "supertest": "~1.0.1",
     "ejs": "~2.3.3",
     "email": "~0.2.6",
-    "async": "~1.4.2"
+    "async": "~1.4.2",
+    "express-winston": "~0.3.1"
   },
   "devDependencies": {
     "chai": "~3.2.0"

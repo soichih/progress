@@ -1,9 +1,9 @@
 #!/usr/bin/node
 'use strict';
 
-var winston = require('winston');
+//var winston = require('winston');
+//var config = require('./config/config');
 
-var config = require('./config/config');
 var server = require('./server');
 
 /*
@@ -15,7 +15,8 @@ winston.handleExceptions(new winston.transports.File({
     filename: config.logger.exception
 }));
 */
-console.log("starting web server...");
-server.start();
 
+//console.log("starting web server...");
+
+server.start();
 console.log("waiting for incoming connections...");

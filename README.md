@@ -14,6 +14,10 @@ ISDP multi-file download service
 
 4) Add a sensu check to make sure web-receiver and request handlers are running.
 
+5) what happens if stage / publish directory can't be written? (doesn't exist, no access, not directory, disk is full)
+
+6) add timeout mechanism for each task? also, should I async.retry?
 
 
-
+7) what happens to error messages? 
+stored in configured location (user can specify level)
