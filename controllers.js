@@ -15,13 +15,9 @@ var scadm = require('sca-datamover');//.init(config.scadm);
 
 var app = require('./server').app;
 var logger = new winston.Logger(config.logger.winston);
+var request_logger = new winston.Logger(config.logger.request);
 
-scadm.init({logger: logger});
-
-exports.health = function (req, res) {
-    //TODO - report something interesting
-    res.json({status: 'running'});
-}
+scadm.init({logger: logger, progress: config.progress});
 
 exports.request = function(req, res) {
     /*
@@ -29,6 +25,7 @@ exports.request = function(req, res) {
     logger.info(req.body);
     logger.error("test error");
     */
+    request_logger.info({headers: req.headers, body: req.body});
 
     var job = new scadm.job({name: 'just another isdp job'});
 
@@ -43,15 +40,18 @@ exports.request = function(req, res) {
             //console.log("calling hsi.get");
             hsi.get(file, config.isdp.stagedir+'/'+job.id, function(err, msgs) {
                 if(!err) return cb();//all good
-                //hsi failed..
+                //failed..
                 var msg = "Failed to download "+file+" from sda. hsi return code: "+err.code;
                 if(msgs) msg += "\n"+msgs.join("\n"); //add details from hsi
-                err.msg = msg;
+                
                 //send error message to user
                 fs.appendFile(config.isdp.stagedir+'/'+job.id+'/isdp_errors.txt', msg+'\n');
+
+                //also deliver it upstream (so that it can be logged on the server side)
+                err.msg = msg;
                 cb(err, true); //true means to continue even with the error
             }, function(progress) {
-                job.progress(progress, task.id); //post an extra progress reports
+                job.progress(progress, job.id+'.'+task.id); //post hsi generated progress
             });
         });
     });
@@ -68,6 +68,7 @@ exports.request = function(req, res) {
         }, cb);
     });
     */
+
     job.task('Creating a zip', function(task, cb) {
         job.stagezip = config.isdp.stagedir+'/'+job.id+'.zip';
         scadm.tasks.zipfiles({

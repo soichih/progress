@@ -19,13 +19,10 @@ app.use(bodyParser.json());
 app.use(expressWinston.logger(config.logger.winston));
 
 //jwt auth is optional
-if(config.express.jwt) {
-    var jwt = require('express-jwt');
-    app.use(jwt(config.express.jwt));
-}
+if(config.express.jwt) app.use(require('express-jwt')(config.express.jwt));
 
 //setup routes
-app.get('/health', controllers.health);
+app.get('/health', function(req, res) { res.json({status: 'running'}); });
 app.post('/request', controllers.request);
 
 /*
