@@ -23,7 +23,7 @@ if(config.express.jwt) app.use(require('express-jwt')(config.express.jwt));
 
 //setup routes
 app.get('/health', function(req, res) { res.json({status: 'running'}); });
-app.post('/request', controllers.request);
+app.get('/progress', controllers.progress);
 
 /*
 app.get('/test', function(req, res) {
@@ -39,10 +39,13 @@ app.use(function(err, req, res, next) {
 });
 
 exports.app = app;
-exports.start = function() {
+exports.start = function(cb) {
     var port = process.env.PORT || config.express.port || '8080';
-    app.listen(port);
-    console.log("ISDP request handler listening on port %d in %s mode", port, app.settings.env);
+    controllers.init(function() {
+        app.listen(port);
+        console.log("ISDP request handler listening on port %d in %s mode", port, app.settings.env);
+        cb();
+    });
 };
 
 

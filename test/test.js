@@ -3,18 +3,62 @@
 var expect = require('chai').expect;
 var assert = require('assert');
 var request = require('supertest');  
+var amqp = require('amqp');
+var uuid = require('node-uuid');
+var winston = require('winston');
 
 var config = require('../config/config');
+var logger = new winston.Logger(config.logger.winston);
+var controllers = require('../controllers');
+var app = require('../server').app;
 
-/*
-describe("config", function() {
-    describe("directories", function() {
-        it("stagedir should be writable", function(done) {
+describe("update", function() {
+    var conn = null;
+    var ex = null;
+    //var id = uuid.v4();
+
+    before(function(done) {
+        var conn = amqp.createConnection(config.progress.amqp, {reconnectBackoffTime: 1000*10});
+        conn.on('ready', function() {
+            logger.info("amqp handshake complete");
+            var ex = conn.exchange(config.progress.exchange, {autoDelete: false, durable: true, type: 'topic'}, function(ex) {
+                logger.info("amqp connected to exchange:"+config.progress.exchange);
+                ex.publish("_portal.test123", {status: "started"});
+                ex.publish("_portal.test123.1", {status: "started"});
+                ex.publish("_portal.test123.2", {status: "started"});
+                ex.publish("_portal.test123.3", {status: "started"});
+
+                ex.publish("_portal.test123.1", {status: "running", progress: 0.5});
+                ex.publish("_portal.test123.2.a", {status: "doing", progress: 0.1});
+                ex.publish("_portal.test123.2.b", {status: "working", progress: 0.2});
+
+                ex.publish("_portal.test123.4", {weight: 100, status: "another work", progress: 0.9});
+
+                //lastly, initialize the controller
+                controllers.init();
+                setTimeout(done, 1000);
+            });
+        });
+        conn.on('error', function(err) {
+            logger.warn("amqp received error.", err);
         });
     });
-});
-*/
 
+    describe("progress", function() {
+        it("#test123", function(done) {
+            request(app).get('/progress?key=_portal.test123&depth=2')
+            //.set('Accept', 'application/json')
+            //.set('Authorization', 'Bearer '+config.test.jwt)
+            .expect(200, function(err, res) {
+                console.log(JSON.stringify(res.body, null, 4));
+                done();
+            });
+        });
+    });
+
+});
+
+/*
 describe("routing", function() {
     var url = 'http://someurl.com';
     var app = require('../server').app;
@@ -29,17 +73,6 @@ describe("routing", function() {
             request(app).get('/_nosuchthing')
             .expect(404, done);
         });
-
-        /* I am not sure if I am testing what I think I am testing..
-        it("error check", function(done) {
-            app.get('/errortest', function(req, res) {
-                throw new Error("test error");
-            });
-            request(app).get('/errortest')
-            .expect(500)
-            .end(done) 
-        });
-        */
 
         it("should return ok status", function(done) {
             request(app).get('/health')
@@ -75,3 +108,4 @@ describe("routing", function() {
         });
     });
 });
+*/

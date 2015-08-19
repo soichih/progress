@@ -1,18 +1,34 @@
 <html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-</style>
-</head>
 <body>
-    <div class="container">
-        <h2>Notification</h2>
-        <div class="well">
-            <p>The tar ball you have requested is ready to be downloaded (jobid: <%= jobid %>)</p>
-            <a class="btn btn-primary" href="<%= download_url%>">Download (<b><%= size%></b> MB)</a>
-        </div>
-        <p class="text-muted">Some footer content here</p>
+<div class="container">
+    <h2>Notification</h2>
+    <div class="well">
+        <p>The tar ball you have requested is ready to be downloaded (jobid: <%= jobid %>)</p>
+        <a class="btn btn-primary" href="<%= download_url%>">Download (<b><%= size%></b> MB)</a>
     </div>
+    <table width="100%" cellpadding="5">
+        <% for(var taskid in status.tasks) { %>
+        <tr>
+            <td style="vertical-align: top;">
+                <p>
+                <% if(status.tasks[taskid].status == 'finished') {%>
+                    <img src="http://soichi7.ppa.iu.edu/public/cdn/check.png"/>
+                <% } else if(status.tasks[taskid].status == 'failed') { %>
+                    <img src="http://soichi7.ppa.iu.edu/public/cdn/cross.png"/>
+                <% } else { %>
+                    <b><%=status.tasks[taskid].status%></b>
+                <% } %>
+                </p>
+            </td>
+            <td style="vertical-align: top;">
+                <p><%= status.tasks[taskid].name %></p>
+                <p style="color: #999;"><%= status.tasks[taskid].msg %></p>
+            </td>
+        </tr>
+        <% } %>
+    </table>
+    <p class="text-muted">Some footer content here</p>
+</div>
 </body>
 </html>
 
