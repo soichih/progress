@@ -273,7 +273,7 @@ if (!String.prototype.endsWith) {
 */
 
 //return current progress status
-exports.progress = function(req, res) {
+exports.status = function(req, res) {
     if(!req.query.key) throw new Error("please specify key param");
     var key = req.query.key;
     var depth = req.query.depth || 1;

@@ -23,7 +23,7 @@ if(config.express.jwt) app.use(require('express-jwt')(config.express.jwt));
 
 //setup routes
 app.get('/health', function(req, res) { res.json({status: 'running'}); });
-app.get('/progress', controllers.progress);
+app.get('/status', controllers.status);
 
 /*
 app.get('/test', function(req, res) {
