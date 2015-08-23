@@ -7,10 +7,11 @@ var amqp = require('amqp');
 var uuid = require('node-uuid');
 var winston = require('winston');
 
-var config = require('../config/config');
+//mine
+var config = require('../api/config/config');
 var logger = new winston.Logger(config.logger.winston);
-var controllers = require('../controllers');
-var app = require('../server').app;
+var controllers = require('../api/controllers');
+var app = require('../api/server').app;
 
 describe("update", function() {
     var conn = null;
@@ -46,7 +47,7 @@ describe("update", function() {
 
     describe("progress", function() {
         it("#test123", function(done) {
-            request(app).get('/progress?key=_portal.test123&depth=2')
+            request(app).get('/status?key=_portal.test123&depth=2')
             //.set('Accept', 'application/json')
             //.set('Authorization', 'Bearer '+config.test.jwt)
             .expect(200, function(err, res) {
