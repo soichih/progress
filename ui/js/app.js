@@ -19,11 +19,15 @@ app.config(['cfpLoadingBarProvider', function(cfpLoadingBarProvider) {
 //configure route
 app.config(['$routeProvider', 'appconf', function($routeProvider, appconf) {
     $routeProvider
-    .when('/detail', {
+    .when('/home', {
+        templateUrl: 't/home.html',
+        controller: 'HomeController',
+    })
+    .when('/detail/:key', {
         templateUrl: 't/detail.html',
         controller: 'DetailController',
     })
     .otherwise({
-        redirectTo: '/detail'
+        redirectTo: '/home'
     });
 }]);

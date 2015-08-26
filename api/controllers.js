@@ -20,8 +20,23 @@ function assert(condition, message) {
 
 var db = null;
 var progress_q = null;
+var progress_ex = null; //for /update
 
 exports.init = function(cb) {
+    if(!config.statusPrec) {
+        config.statusPrec = function statusPrec(status) {
+            switch(status) {
+            case "failed": return 4;
+            case "finished": return 3;
+            case "canceled": return 2;
+            case "running": return 1;
+            case "waiting": return 0;
+            default:
+                return -1;
+            }
+        }
+    }
+    
     //do initializations in series
     async.series([
         //connect to redis
@@ -38,6 +53,7 @@ exports.init = function(cb) {
             conn.on('ready', function() {
                 logger.info("amqp handshake complete");
                 conn.exchange(config.progress.exchange, {autoDelete: false, durable: true, type: 'topic'}, function(ex) {
+                    progress_ex = ex;
                     logger.info("amqp connected to exchange:"+config.progress.exchange);
                     conn.queue(config.progress.queue, {durable: true, autoDelete: false}, function(q) {
                         progress_q = q;
@@ -75,13 +91,14 @@ function get_node(key, cb) {
             if(node.start_time) node.start_time = parseInt(node.start_time);
             if(node.end_time) node.end_time = parseInt(node.end_time);
             if(node._update_time) node._update_time = parseInt(node._update_time);
+
+            //get childlist
             db.smembers(key+"._children", function(err, children) {
                 node._children = children;
                 cb(null, node);
             });
         } else {
-            //return empty object if key is not found
-            cb(null, {});
+            cb(null); //not found
         }
     });
 }
@@ -90,15 +107,15 @@ function set_node(key, node, cb) {
     //assert(cb.arguments.length == 1);
     //TODO - validate?
 
-    if(node.progress === undefined) node.progress = 0;
+    //if(node.progress === undefined) node.progress = 0;
     if(node.weight == undefined) node.weight = 1; //relative complexity relative to siblings
     if(node.start_time === undefined) node.start_time = Date.now();
     if(node.progress == 1) node.end_time = Date.now(); //mark completion time 
 
     node._update_time = Date.now(); //mark update time (so that we can remove old records later)
 
-    //console.log("setting node: "+key);
-    //console.dir(node);
+    logger.debug("setting node: "+key);
+    logger.debug(node);
     db.hmset(key, node, cb);
 }
 
@@ -109,30 +126,47 @@ function get_parent_key(key) {
     return key.substring(0, pos);
 }
 
+//decide precedence for each status
+
 function aggregate_children(key, node, cb) {
     if(!node._children || node._children.length == 0) {
         //don't have any children
+        //logger.debug("no child for "+key);
+        //console.dir(node);
         cb();
     } else {
         //do weighted aggregation
         var total_progress = 0;
         var total_weight = 0;
+        var status = null;
         async.eachSeries(node._children, function(child_key, next) {
+            //logger.debug("getting child:"+child_key);
             get_node(child_key, function(err, child) {
                 if(err) throw err;
                 //console.dir(child);
-                if(child) { //child went missing?
-                    total_progress += child.progress * child.weight;
+                if(child !== undefined) { //child could go missing?
+                    //aggregate progess
+                    if(child.progress) {
+                        total_progress += child.progress * child.weight;
+                    }
                     total_weight += child.weight;
-                    //console.log("aggregating");
-                    //console.log("total_progess:"+total_progress);
-                    //console.log("total_weight:"+total_weight);
+
+                    //aggregate status
+                    if(!status) {
+                        //simple case..
+                        status = child.status; 
+                    } else {
+                        if(config.statusPrec(status) < config.statusPrec(child.status)) status = child.status;
+                    }
                 }
                 next();
             });
         }, function(err) {
             //update my progress based on child's progress
-            node.progress = total_progress / total_weight;
+            if(total_weight != 0) {
+                node.progress = total_progress / total_weight;
+            }
+            node.status = status;
             cb();
         });
     }
@@ -141,6 +175,10 @@ function aggregate_children(key, node, cb) {
 function get_state(key, depth, cb) {
     get_node(key, function(err, node) {
         if(err) throw err;
+
+        //status not yet posted, or incorrect key
+        if(node === undefined) return cb();
+
         node._key = key; //debug
         //console.dir(node);
         depth--;
@@ -158,6 +196,9 @@ function get_state(key, depth, cb) {
                             next();
                         });
                     }, function(err) {
+                        node.tasks.sort(function(a,b) {
+                            return a.start_time - b.start_time;
+                        });
                         cb(err, node);
                     });
                 } 
@@ -169,13 +210,18 @@ function get_state(key, depth, cb) {
 }
 
 function update(key, node, cb) {
-    console.log("updating "+key);
-    console.dir(node);
-
+    //logger.debug("updating "+key);
+    //logger.debug(node);
     //assert(node); //shouldn't be null
+
+    //first aggreage child info (to calculate progress)
     aggregate_children(key, node, function() {
+        
+        //then update the node received
         set_node(key, node, function(err) {
             if(err) throw err;
+    
+            //logger.debug("processing parent");
 
             //find parent key
             var parent_key = null;
@@ -191,12 +237,17 @@ function update(key, node, cb) {
             //console.log("edge of "+parent_key+" is "+edge_key);
             if(edge_key[0] == "_") return cb(null); //parent_key that starts with _ is a root (like _portal) Don't bubble up to it
             
-            //ok.. now we've got a work to do
-            db.sadd(parent_key+"._children", key); //make sure parents knows about me
+            //make sure my parent knows me
+            //logger.debug("adding "+key+" to "+parent_key+"._children");
+            db.sadd(parent_key+"._children", key); 
+
+            //finally, bubble up to the parent
             get_node(parent_key, function(err, p) {
                 if(err) throw err;
+                //logger.debug("got parent "+parent_key);
+                //logger.debug(p);
                 //handle case where parent node wasn't reported (children reported first?)
-                //console.log("recursing to "+parent_key);
+                if(p === undefined) p = {_children: [key]}; //parent don't exist yet.. but it needs to know about me at least so that progress can bubble up
                 update(parent_key, p, cb);
             });
         });
@@ -205,8 +256,8 @@ function update(key, node, cb) {
 
 //handled new progress event
 function progress(message, headers, info, ack) {
-    console.log("message received key:"+info.routingKey);
-    console.dir(message);
+    //logger.info("message received key:"+info.routingKey);
+    //logger.info(message);
 
     var key = info.routingKey;
     //message._children = []; //don't have to aggregate children on the node specified (only worry about parents)
@@ -217,13 +268,29 @@ function progress(message, headers, info, ack) {
 }
 
 //return current progress status
-exports.status = function(req, res) {
+exports.status = function(req, res, next) {
     if(!req.query.key) throw new Error("please specify key param");
     var key = req.query.key;
     var depth = req.query.depth || 1;
 
     get_state(key, depth, function(err, state) {
+        if(err) return next(err);
         res.json(state);
     });
 }
 
+exports.update = function(req, res, next) {
+    var key = req.body.key;
+    var p = req.body.p;
+    /* routing through amqp somehow locks up (or kills?) the app
+    progress_ex.publish(key, p, function(err) {
+        if(err) return next(err);
+        res.end();
+    });
+    */
+    //logger.debug(p);
+    update(key, p, function(err) {
+        if(err) return next(err);
+        res.end();
+    });
+}

@@ -24,16 +24,24 @@ describe("update", function() {
             logger.info("amqp handshake complete");
             var ex = conn.exchange(config.progress.exchange, {autoDelete: false, durable: true, type: 'topic'}, function(ex) {
                 logger.info("amqp connected to exchange:"+config.progress.exchange);
-                ex.publish("_portal.test123", {status: "started"});
-                ex.publish("_portal.test123.1", {status: "started"});
-                ex.publish("_portal.test123.2", {status: "started"});
-                ex.publish("_portal.test123.3", {status: "started"});
 
+                ex.publish("_portal.test123", {name: "test123 job", status: "waiting"});
+                ex.publish("_portal.test123.1", {name: "test123 task 1", status: "waiting"});
                 ex.publish("_portal.test123.1", {status: "running", progress: 0.5});
-                ex.publish("_portal.test123.2.a", {status: "doing", progress: 0.1});
-                ex.publish("_portal.test123.2.b", {status: "working", progress: 0.2});
 
-                ex.publish("_portal.test123.4", {weight: 100, status: "another work", progress: 0.9});
+                ex.publish("_portal.test123.2", {name: "test123 task 2", status: "waiting"});
+                ex.publish("_portal.test123.2.c", {status: "finished", progress: 1});
+                ex.publish("_portal.test123.2.a", {status: "failed", progress: 0.1});
+
+                ex.publish("_portal.test123.2.b", {status: "canceled", progress: 0.2});
+                ex.publish("_portal.test123.2.b.i", {status: "waiting"});
+                ex.publish("_portal.test123.2.b.ii", {status: "waiting"});
+
+                ex.publish("_portal.test123.3", {name: "test123 task 3", status: "waiting"});
+                ex.publish("_portal.test123.3.b", {status: "paused", progress: 0.2});
+
+                ex.publish("_portal.test123.4", {name: "test123 task 3", status: "waiting"});
+                ex.publish("_portal.test123.5", {name: "test123 test 4!", weight: 100, status: "waiting", progress: 0.9});
 
                 //lastly, initialize the controller
                 controllers.init();

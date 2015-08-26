@@ -1,0 +1,16 @@
+
+<div class="container">
+    <h2>Progress</h2>
+    <p>Displays detailed progress information for given progress key</p>
+
+    <div class="well" ng-if="!running">
+        <p>If you want to simulate how this works, click on start</p>
+        <button class="btn" ng-click="test_start()">Start</button>
+    </div>
+    <div class="well" ng-if="running">
+        <p>View progress here: <a href="#/detail/{{testid}}" target="_blank">#/detail/{{testid}}</a></p>
+        <pre>{{msg_key}}
+{{msg}}</pre>
+        <button class="btn" ng-click="test_stop()">Stop</button>
+    </div>
+</div>

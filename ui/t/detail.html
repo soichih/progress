@@ -1,8 +1,38 @@
 <style>
+.progress {
+margin-bottom: 5px;
+}
 </style>
 
 <div class="container">
-    <h3>Progress</h3>
-    <progressTree ng-model="status"></progressTree>
+    <h2>Progress</h2>
+    <div ng-if="status">
+        <h3>{{status.name}}</h3>
+        <small class="text-muted pull-right">{{status._key}}</small>
+        <sca-progress detail="status"></sca-progress>
+        <hr>
+        <div ng-if="status.tasks">
+            <div ng-repeat="task in status.tasks" ng-if="status.tasks">
+                <b>{{task.name}}</b>
+                <sca-progress detail="task"></sca-progress>
+                <div style="margin-left: 20px;" ng-if="task.tasks">
+                    <div ng-repeat="subtask in task.tasks" ng-if="task.tasks">
+                        <b>{{subtask.name}}</b>
+                        <sca-progress detail="subtask"></sca-progress>
+                        <!-- let's limit to 3rd level for now-->
+                        <p ng-if="subtask._children && subtask._children.length > 0">Subtasks count: {{subtask._children.length}}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- footer -->
+        <br>
+        <br>
+    </div>
+
+    <div ng-if="!status">
+        <p class="text-muted">Status not reported yet.. Or you have specified an incorrect key</p>
+    </div>
+
 </div>
 

@@ -56,7 +56,7 @@ We will implement an Angular directive for progress UI where user can interact (
 
 ### Status
 
-user can set "status" as part of progress message
+user can set "status" as part of progress message on the edge node. 
 
 ```
 {progress: 1, status: "finished"}
@@ -64,12 +64,33 @@ user can set "status" as part of progress message
 
 Progress UI expects following status, but you can set any status you'd like.
 
-waiting: task is waiting to be executed
-running: task is currently running (making progress)
-finished: task has successfully completed
-failed: task has failed (job may continue.. )
-canceled: task was canceled by the user (user may restart it?)
-(paused: task was paused by the user)
+* waiting: task is waiting to be executed
+* running: task is currently running (making progress)
+* finished: task has successfully completed
+* failed: task has failed (job may continue.. )
+* canceled: task was canceled by the user (user may restart it?)
+* (paused: task was paused by the user)
+
+Status on non-edge node are aggregated based on children's status
+so if you set status on non-edge node, and if any of the children or grand-chlidren reports it, the status may be overwritten.
+Aggregation of child status is done simply by picking the highest precedence which is currently set to
+
+```
+if(!config.statusPrec) {
+    config.statusPrec = function statusPrec(status) {
+        switch(status) {
+        case "failed": return 4;
+        case "finished": return 3;
+        case "canceled": return 2;
+        case "running": return 1;
+        case "waiting": return 0;
+        default:
+            return -1;
+        }
+    }
+}
+```
+
 
 ## TODOS
 

@@ -8,8 +8,7 @@ angular.module('app.config', [])
     version: '0.0.1',
     title: 'Progress Service UI',
 
-    //URL for auth service API
-    //api: 'https://soichi7.ppa.iu.edu/api/auth',
+    api: 'https://soichi7.ppa.iu.edu/api/progress',
 
     //default location to redirect after successful login
     //default_redirect_url: 'https://soichi7.ppa.iu.edu/profile', 

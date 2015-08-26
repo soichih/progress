@@ -1,71 +1,109 @@
 'use strict';
 
 var controllers = angular.module('progressControllers', [ 'ui.bootstrap' ]);
-controllers.controller('DetailController', ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location',
-function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $location) {
-    $scope.title = appconf.title;
-    /*
-    $scope.test = function() {
-        $http.get(appconf.api+'/verify')
-        .success(function(data, status, headers, config) {
-            toaster.success("You are logged in!");
-            $scope.jwt_dump = JSON.stringify(data, null, 4);
-            console.dir(data);
-        })
-        .error(function(data, status, headers, config) {
-            toaster.error(data.message);
-        }); 
+
+controllers.controller('HomeController', ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval',
+function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $location, $interval) {
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // TODO only allows this to developer / admin
+    //
+    var sim = null;
+    $scope.running = false;
+    $scope.test_start = function() {
+        $scope.running = true;
+
+        //create some random id
+        $scope.testid = '_test.xxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+            return v.toString(16);
+        });
+        sim = $interval(simulate, 300);
     }
-    */
-    $http.get('https://soichi7.ppa.iu.edu/api/progress/status?key=_portal.test123&depth=2')
-    .success(function(data) {
-        console.dir(data);
-        $scope.status = data;
-    });
+
+    $scope.test_stop = function() {
+        $interval.cancel(sim);
+        $scope.running = false;
+    }
+
+    var progress = {};
+    var mutex = false;
+    function simulate() {
+        if(mutex) return;
+        mutex = true;
+        //generate rangom progress data
+        var key = $scope.testid;
+        if(!progress[key]) {     
+            var p = {name: "Test Job with id"+key};
+            $http.post(appconf.api+'/update', {key: key, p:p});
+            progress[key] = p;
+        }
+        key += "."+parseInt(Math.random()*4);
+        if(!progress[key]) {     
+            var p = {name: "Subtask(level1) with id"+key};
+            $http.post(appconf.api+'/update', {key: key, p:p});
+            progress[key] = p;
+        }
+        key += "."+parseInt(Math.random()*4);
+        if(!progress[key]) {     
+            var p = {name: "Subtask(level2) with id"+key};
+            $http.post(appconf.api+'/update', {key: key, p:p});
+            progress[key] = p;
+        }
+        key += "."+parseInt(Math.random()*4);
+
+        //here is the edge
+        if(progress[key]) {
+            if(progress[key].progress != 1) {
+                progress[key].progress+=0.1;
+                progress[key].status = "running";
+            } else {
+                progress[key].status = "finished";
+            }
+        } else {
+            progress[key] = {progress: 0, weight: 1, status: "waiting", msg: "hello", name: "random edge job doing random thing"};
+        }
+        //console.dir(progress[key]);
+        
+        $http.post(appconf.api+'/update', {key: key, p:progress[key]})
+        .success(function() {
+            $scope.msg_key = key;
+            $scope.msg = progress[key];
+            mutex = false;
+        })
+        .error(function(err) {
+            //timeout doesn't get here.. if server is down
+            toaster.error(err);
+            mutex = false;
+        });
+    }
 }]);
 
-//see http://plnkr.co/edit/T0BgQR?p=info
-controllers.directive('progressTree', function() {
-    /*
+controllers.controller('DetailController', ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval', 
+function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $location, $interval) {
+    $scope.title = appconf.title;
+    var key = $routeParams.key;
+
+    //start polling.. (TODO - implement socket.io subscription instead)
+    $interval(function() {
+        $http.get(appconf.api+'/status?key='+key+'&depth=3')
+        .success(function(data) {
+            console.dir(data);
+            $scope.status = data;
+        })
+        .error(function(err) {
+            toaster.error("Failed to load progress information: "+err.message);
+            $scope.status = null;
+        });
+    }, 1000);
+}]);
+
+controllers.directive('scaProgress', function() {
     return {
-        template: '<ul><choice ng-repeat="choice in tree"></choice></ul>',
-        replace: true,
-        transclude: true,
         restrict: 'E',
         scope: {
-            tree: '=ngModel'
-        }
+            detail: '=detail'
+        },
+        templateUrl: 't/progress.html'
     };
-    */
-    return { 
-        restrict: 'E',
-        //In the template, we do the thing with the span so you can click the 
-        //text or the checkbox itself to toggle the check
-        template: '<li>' +
-          '<span ng-click="choiceClicked(choice)">' +
-            '<input type="checkbox" ng-checked="choice.checked"> {{node.name}}' +
-          '</span>' +
-        '</li>',
-        link: function(scope, elm, attrs) {
-            /*
-          scope.choiceClicked = function(choice) {
-            choice.checked = !choice.checked;
-            function checkChildren(c) {
-              angular.forEach(c.children, function(c) {
-                c.checked = choice.checked;
-                checkChildren(c);
-              });
-            }
-            checkChildren(choice);
-          };
-            */
-          
-          //Add children by $compiling and doing a new choice directive
-          if (scope.tasks) {
-            var tasks = $compile('<progressTree ng-model="scope.tasks"></choice-tree>')(scope)
-            elm.append(childChoice);
-          }
-        }
-    };
-
 });
