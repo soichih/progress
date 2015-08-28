@@ -73,24 +73,8 @@ Progress UI expects following status, but you can set any status you'd like.
 
 Status on non-edge node are aggregated based on children's status
 so if you set status on non-edge node, and if any of the children or grand-chlidren reports it, the status may be overwritten.
-Aggregation of child status is done simply by picking the highest precedence which is currently set to
-
-```
-if(!config.statusPrec) {
-    config.statusPrec = function statusPrec(status) {
-        switch(status) {
-        case "failed": return 4;
-        case "finished": return 3;
-        case "canceled": return 2;
-        case "running": return 1;
-        case "waiting": return 0;
-        default:
-            return -1;
-        }
-    }
-}
-```
-
+Aggregation of child status is done simply by picking the highest precedence (see controller.js for default).
+You can override the statusPrec function in your config to set your own precedence. 
 
 ## TODOS
 
@@ -99,4 +83,5 @@ Should this service be responsible for the status of the jobs / tasks? Or should
 
 I need to purge old progress records so that it won't clobber redis
 
+Animate the progress bar movement (css width animation?)
 

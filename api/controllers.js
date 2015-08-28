@@ -26,10 +26,10 @@ exports.init = function(cb) {
     if(!config.statusPrec) {
         config.statusPrec = function statusPrec(status) {
             switch(status) {
-            case "failed": return 4;
-            case "finished": return 3;
+            case "running": return 4;
+            case "failed": return 3;
             case "canceled": return 2;
-            case "running": return 1;
+            case "finished": return 1;
             case "waiting": return 0;
             default:
                 return -1;

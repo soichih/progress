@@ -54,10 +54,10 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
 
         //here is the edge
         if(progress[key]) {
-            if(progress[key].progress != 1) {
-                progress[key].progress+=0.1;
-                progress[key].status = "running";
-            } else {
+            progress[key].progress+=Math.random()/3;
+            progress[key].status = "running";
+            if(progress[key].progress > 1) {
+                progress[key].progress= 1;
                 progress[key].status = "finished";
             }
         } else {
@@ -84,7 +84,8 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
     $scope.title = appconf.title;
     var key = $routeParams.key;
 
-    //start polling.. (TODO - implement socket.io subscription instead)
+    //start refreshing the entire status (to keep it synced) 
+    //TODO - for more fine grained update needs to be done via socket.io
     $interval(function() {
         $http.get(appconf.api+'/status?key='+key+'&depth=3')
         .success(function(data) {
