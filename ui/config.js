@@ -6,9 +6,13 @@
 angular.module('app.config', [])
 .constant('appconf', {
     version: '0.0.1',
-    title: 'Progress Service UI',
+    title: 'Progress',
 
     api: 'https://soichi7.ppa.iu.edu/api/progress',
+    socket: {
+        base: 'https://soichi7.ppa.iu.edu',
+        opts: {path: '/api/progress/socket.io'},
+    }
 
     //default location to redirect after successful login
     //default_redirect_url: 'https://soichi7.ppa.iu.edu/profile', 

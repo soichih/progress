@@ -1,6 +1,6 @@
 'use strict';
 
-var app = angular.module('scaApp', [
+var app = angular.module('sca', [
     'app.config',
     'ngSanitize',
     'ngRoute',
@@ -8,8 +8,17 @@ var app = angular.module('scaApp', [
     'ngCookies',
     'toaster',
     'angular-loading-bar',
+    'btford.socket-io',
     'progressControllers' 
 ]);
+
+app.factory('socket', ['appconf', 'socketFactory', function(appconf, socketFactory) {
+    console.dir(appconf.socket);
+    return socketFactory({
+        //prefix: 'foo~', //what is this for?
+        ioSocket: io.connect(appconf.socket.base, appconf.socket.opts)
+    });
+}]);
 
 //show loading bar at the top
 app.config(['cfpLoadingBarProvider', function(cfpLoadingBarProvider) {
@@ -31,3 +40,5 @@ app.config(['$routeProvider', 'appconf', function($routeProvider, appconf) {
         redirectTo: '/home'
     });
 }]);
+
+

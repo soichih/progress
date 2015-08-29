@@ -11,6 +11,7 @@ var expressWinston = require('express-winston');
 
 //mine
 var config = require('./config/config');
+var logger = new winston.Logger(config.logger.winston);
 var controllers = require('./controllers');
 
 //init express app
@@ -46,11 +47,33 @@ exports.start = function(cb) {
     var port = process.env.PORT || config.express.port || '8080';
     var host = process.env.HOST || config.express.host || 'localhost';
     controllers.init(function() {
-        app.listen(port, host, function() {
+        var server = app.listen(port, host, function() {
             console.log("ISDP request handler listening on port %d in %s mode", port, app.settings.env);
             if(cb) cb();
         });
+
+        //init socket.io
+        var io = require('socket.io').listen(server);
+        io.on('connection', function (socket) {
+            socket.on('subscribe', function (key) {
+                console.log("socket joining "+key);
+                socket.join(key);
+            });
+            //socket will leave automatically upon disconnection.. 
+            /*
+            socket.on('unsubscribe', function(key) {
+                socket.leave(key);
+            });
+            */
+            //socket.emit('update', { hello: 'world', '/whatever': 'will get' });
+            /*
+            socket.emit('news', { hello2: 'world2'});
+            socket.on('my other event', function (data) {
+                logger.debug(data);
+            });
+            */
+        });
+        controllers.set_socketio(io);
     });
 };
-
 

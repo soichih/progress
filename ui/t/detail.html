@@ -3,41 +3,182 @@
 margin-bottom: 5px;
 }
 .sca-progress-bar {
-    -webkit-transition: width 0.5s ease-in-out;
-    -moz-transition: width 0.5s ease-in-out;
-    -o-transition: width 0.5s ease-in-out;
-    transition: width 0.5s ease-in-out;
+-webkit-transition: width 0.5s ease-in-out;
+-moz-transition: width 0.5s ease-in-out;
+-o-transition: width 0.5s ease-in-out;
+transition: width 0.5s ease-in-out;
+}
+h3 {
+margin-top: 0px;
+}
+.has_subtask {
+cursor: pointer;
+}
+.has_subtask:hover {
+color: #008cba;
+}
+.list-group-item-small {
+padding: 5px 10px;
+}
+.list-group-item-small .progress {
+margin-bottom: 0px;
+}
+.list-group-item-small p {
+margin-bottom: 0px;
+}
+.subsub_tasks {
+border-left: 3px solid #1b809e;
+padding-left: 10px;
+}
+.sub_tasks {
+background-color: #f0f0f0;
 }
 </style>
 
+<script type="text/ng-template" id="something.html">
+</script>
+
 <div class="container">
-    <h2>Progress</h2>
+    <h2>{{title}}</h2>
     <div ng-if="status">
-        <h3>{{status.name}}</h3>
-        <small class="text-muted pull-right">{{status._key}}</small>
-        <sca-progress detail="status"></sca-progress>
-        <hr>
-        <div ng-if="status.tasks">
-            <div ng-repeat="task in status.tasks" ng-if="status.tasks">
-                <b>{{task.name}}</b>
-                <sca-progress detail="task"></sca-progress>
-                <div style="margin-left: 20px;" ng-if="task.tasks">
-                    <div ng-repeat="subtask in task.tasks" ng-if="task.tasks">
-                        <b>{{subtask.name}}</b>
-                        <sca-progress detail="subtask"></sca-progress>
-                        <!-- let's limit to 3rd level for now-->
-                        <p ng-if="subtask._children && subtask._children.length > 0">Subtasks count: {{subtask._children.length}}</p>
+        <ul class="list-group">
+            <li class="list-group-item" style="background-color: #f3f3f3;">
+                <div class="pull-right">
+                    <span class="text-muted">Started At
+                        <time>{{status.start_time | date:'medium'}}</time> <!-- <small class="text-muted pull-right">{{status.key}}</small> -->
+                    </span>
+                </div>
+                <h4 class="list-group-item-heading">{{status.name}}</h4>
+            </li>
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="pull-right" style="margin-top: 8px;">
+                            <span class="text-muted">At 
+                            <time>{{status.update_time | date:'medium'}}</time> <!-- <small class="text-muted pull-right">{{status.key}}</small> -->
+                            </span>
+                        </div>
+                        <h3 style="text-transform: uppercase;font-weight: bold;">
+                            {{status.status}}
+                            <span style="margin-left: 10px;" ng-if="status.status == 'running'"><i class="fa fa-spinner fa-pulse"></i></span>
+                        </h3>
+                        <p>{{status.msg}}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="progress" style="height: 35px;">
+                            <div class="progress-bar" role="progressbar" aria-valuenow="{{status.progress*100}}" aria-valuemin="0" aria-valuemax="100" 
+                            style="width: {{status.progress*100}}%; line-height: 250%;" ng-class="progressClass(status.status)">
+                                {{status.progress*100 | number:1}}% 
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </li>
+            <li class="list-group-item" ng-if="status.tasks" style="background-color: #f3f3f3">Sub Tasks</li>
+            <li class="list-group-item" ng-repeat="task in status.tasks | orderBy:'start_time'" ng-if="status.tasks">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div ng-click="toggleShowTasks(task.key)" ng-class="{has_subtask: task.tasks}" style="font-size: 14px">
+                            <span ng-if="task.tasks">
+                                <span ng-if="show_tasks[task.key]"><i class="fa fa-folder-open"></i></span>
+                                <span ng-if="!show_tasks[task.key]"><i class="fa fa-folder"></i></span>
+                            </span>
+                            <b>{{task.name}}</b>
+                            <!--
+                            <span class="text-muted">At 
+                            <time>{{task.update_time}}</time>
+                            </span>
+                            -->
+                            <span ng-if="task.tasks" class="text-muted"> ({{task._children.length}} children)</span>
+                        </div>
+                        {{task.msg}}
+                    </div>
+                    <div class="col-md-2">
+                        <p style="text-transform: uppercase;font-weight: bold;font-size: 14px;">
+                            {{task.status}}
+                            <span style="margin-left: 5px;" ng-if="task.status == 'running'"><i class="fa fa-spinner fa-pulse"></i></span>
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="progress">
+                            <div class="progress-bar" ng-class="progressClass(task.status)" role="progressbar" aria-valuenow="{{task.progress*100}}" aria-valuemin="0" aria-valuemax="100" style="width: {{task.progress*100}}%;">
+                                {{task.progress*100 | number:0}}% 
+                            </div>
+                        </div>
+                    </div>
+                </div><!--row-->
+                <div ng-if="show_tasks[task.key]">
+                    <ul class="list-group">
+                        <li class="list-group-item" ng-repeat="subtask in task.tasks" ng-if="task.tasks" style="background-color: #fafafa;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div ng-click="toggleShowTasks(subtask.key); $event.stopPropagation();" ng-class="{has_subtask: subtask.tasks}">
+                                        <span ng-if="subtask.tasks">
+                                            <span ng-if="show_tasks[subtask.key]"><i class="fa fa-folder-open"></i></span>
+                                            <span ng-if="!show_tasks[subtask.key]"><i class="fa fa-folder"></i></span>
+                                        </span>
+                                        <b>{{subtask.name}}</b>
+                                        <span ng-if="subtask._children && subtask._children.length > 0" class="text-muted"> ({{subtask._children.length}} children)</span>
+                                    </div>
+                                    {{subtask.msg}}
+                                </div>
+                                <div class="col-md-2">
+                                    <p style="text-transform: uppercase;font-weight: bold; font-size: 13px;">
+                                        {{subtask.status}}
+                                        <span style="margin-left: 5px;" ng-if="subtask.status == 'running'"><i class="fa fa-spinner fa-pulse"></i></span>
+                                    </p>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="progress">
+                                        <div class="progress-bar" ng-class="progressClass(subtask.status)" role="progressbar" 
+                                        aria-valuenow="{{subtask.progress*100}}" aria-valuemin="0" aria-valuemax="100" 
+                                        style="width: {{subtask.progress*100}}%;">
+                                            {{subtask.progress*100 | number:0}}% 
+                                        </div>
+                                    </div>
+                                </div>
+                            </div><!--row-->
+                            <div ng-if="show_tasks[subtask.key]" class="subsub_tasks">
+                                <div class="row" ng-repeat="subsubtask in subtask.tasks">
+                                    <div class="col-md-6">
+                                        <!-- let's display up to 3rd level -->
+                                        <span ng-if="subsubtask._children && subsubtask._children.length > 0">
+                                            <i class="fa fa-folder"></i>
+                                        </span>
+                                        <b>{{subsubtask.name}}</b>
+                                        <span ng-if="subsubtask._children && subsubtask._children.length > 0" class="text-muted"> ({{subtask._children.length}} children)</span>
+                                        <br>
+                                        {{subsubtask.msg}}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <p style="text-transform: uppercase;font-weight: bold;">
+                                            {{subsubtask.status}}
+                                            <span style="margin-left: 5px;" ng-if="subsubtask.status == 'running'"><i class="fa fa-spinner fa-pulse"></i></span>
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="progress" style="height: 18px;">
+                                            <div class="progress-bar" ng-class="progressClass(subsubtask.status)" role="progressbar" 
+                                            aria-valuenow="{{subsubtask.progress*100}}" aria-valuemin="0" aria-valuemax="100" 
+                                            style="width: {{subsubtask.progress*100}}%; font-size: 7pt; line-height: inherit;">
+                                                {{subsubtask.progress*100 | number:0}}% 
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div><!--row-->
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+        </ul>
         <!-- footer -->
         <br>
         <br>
     </div>
 
     <div ng-if="!status">
-        <p class="text-muted">Status not reported yet.. Or you have specified an incorrect key</p>
+        <p class="text-muted">Status not reported yet.. or you have specified an incorrect key</p>
     </div>
 
 </div>

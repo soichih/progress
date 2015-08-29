@@ -18,7 +18,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
             var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
             return v.toString(16);
         });
-        sim = $interval(simulate, 300);
+        sim = $interval(simulate, 100);
     }
 
     $scope.test_stop = function() {
@@ -28,29 +28,31 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
 
     var progress = {};
     var mutex = false;
+    var count = 0;
     function simulate() {
         if(mutex) return;
         mutex = true;
+        count++;
         //generate rangom progress data
         var key = $scope.testid;
         if(!progress[key]) {     
-            var p = {name: "Test Job with id"+key};
+            var p = {name: "Test Job with id"+key, msg: "Created task"};
             $http.post(appconf.api+'/update', {key: key, p:p});
             progress[key] = p;
         }
-        key += "."+parseInt(Math.random()*4);
+        key += "."+parseInt(Math.random()*3);
         if(!progress[key]) {     
-            var p = {name: "Subtask(level1) with id"+key};
+            var p = {name: "Subtask with id"+key, msg: "Sub task created"};
             $http.post(appconf.api+'/update', {key: key, p:p});
             progress[key] = p;
         }
-        key += "."+parseInt(Math.random()*4);
+        key += "."+parseInt(Math.random()*3);
         if(!progress[key]) {     
-            var p = {name: "Subtask(level2) with id"+key};
+            var p = {name: "Sub-Subtask with id"+key, msg: "Sub-sub task created"};
             $http.post(appconf.api+'/update', {key: key, p:p});
             progress[key] = p;
         }
-        key += "."+parseInt(Math.random()*4);
+        key += "."+parseInt(Math.random()*3);
 
         //here is the edge
         if(progress[key]) {
@@ -59,9 +61,16 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
             if(progress[key].progress > 1) {
                 progress[key].progress= 1;
                 progress[key].status = "finished";
+                progress[key].msg = "updates made "+count;
+                /*
+                if(key == $scope.testid) {
+                    toaster.success("Simulation finished");
+                    $scope.test_stop();
+                }
+                */
             }
         } else {
-            progress[key] = {progress: 0, weight: 1, status: "waiting", msg: "hello", name: "random edge job doing random thing"};
+            progress[key] = {progress: 0, weight: 1, status: "waiting", msg: "hello", name: "Doing nothing particular useful.."};
         }
         //console.dir(progress[key]);
         
@@ -79,24 +88,104 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
     }
 }]);
 
-controllers.controller('DetailController', ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval', 
-function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $location, $interval) {
-    $scope.title = appconf.title;
-    var key = $routeParams.key;
+controllers.controller('DetailController', 
+['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval', 'socket', 
+function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $location, $interval, socket) {
+    console.log("initialzing detailcontroller");
 
-    //start refreshing the entire status (to keep it synced) 
-    //TODO - for more fine grained update needs to be done via socket.io
-    $interval(function() {
-        $http.get(appconf.api+'/status?key='+key+'&depth=3')
+    $scope.title = appconf.title;
+    $scope.rootkey = $routeParams.key;
+
+    function load_data() {
+        console.log("requesting full status");
+        $http.get(appconf.api+'/status?key='+$scope.rootkey+'&depth=4')
         .success(function(data) {
-            console.dir(data);
             $scope.status = data;
+            console.dir(data);
+            update_catalog($scope.status);
         })
         .error(function(err) {
             toaster.error("Failed to load progress information: "+err.message);
             $scope.status = null;
         });
-    }, 1000);
+    }
+
+    //create a catalog pointing to different nodes in $scope.status
+    var catalog = {};
+    function update_catalog(node) {
+        catalog[node.key] = node;
+        if(node.tasks) node.tasks.forEach(update_catalog);
+    }
+    
+    //start refreshing the entire status (to keep it synced) 
+    //for more fine grained update comes via socket.io
+    $interval(load_data, 1000*60*3); //every 3 minutes?
+
+    $scope.progressClass = function(status) {
+        switch(status) {
+        case "running":
+            return "";
+        case "finished":
+            return "progress-bar-success";
+        case "canceled":
+        case "paused":
+            return "progress-bar-warning";
+        case "failed":
+            return "progress-bar-danger";
+        default:
+            return "progress-bar-info";
+        }
+    }
+
+    //holds flags to show sub task tree
+    $scope.show_tasks = {};
+    $scope.toggleShowTasks = function(key) {
+        if($scope.show_tasks[key] === undefined) {
+            $scope.show_tasks[key] = false; //false by default
+        }
+        $scope.show_tasks[key] = !$scope.show_tasks[key];
+        //console.dir($scope.show_tasks);
+    }
+    
+    //grab key up to non _ token (like _test.f771b6c2b8f)
+    var tokens = $scope.rootkey.split(".");
+    var room = "";
+    for(var i = 0;i < tokens.length;++i) {
+        if(room != "") room += ".";
+        room += tokens[i];
+        if(tokens[i][0] != "_") break;
+    };
+    socket.emit('subscribe', room); //no cb?
+    load_data();
+
+    /*
+    var socket = io.connect(appconf.socket_io.base, appconf.socket_io.opt);
+    socket.on('connect', function() {
+    });
+
+    */
+    socket.on('update', function (data) {
+        $scope.$apply(function() {
+            var prev = $scope.status;
+            data.forEach(function(update) {
+                if(update.key.indexOf($scope.rootkey) == -1) {
+                    console.log("received unwanted key :"+update.key);
+                    return;
+                }
+                console.log(update);
+                var node = catalog[update.key];
+                if(!node) {
+                    if(prev.tasks === undefined) prev.tasks = [update];
+                    else prev.tasks.push(update);
+                    catalog[update.key] = update;
+                    prev = update;
+                } else {
+                    for(var key in update) node[key] = update[key]; //apply update
+                    prev = node;
+                }
+            });
+        });
+    });
 }]);
 
 controllers.directive('scaProgress', function() {
@@ -105,6 +194,7 @@ controllers.directive('scaProgress', function() {
         scope: {
             detail: '=detail'
         },
-        templateUrl: 't/progress.html'
+        templateUrl: 't/scaprogress.html'
     };
 });
+

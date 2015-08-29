@@ -21,6 +21,11 @@ function assert(condition, message) {
 var db = null;
 var progress_q = null;
 var progress_ex = null; //for /update
+var socket_io = null; //socket io
+
+exports.set_socketio = function(_socket_io) {
+    socket_io = _socket_io;
+}
 
 exports.init = function(cb) {
     if(!config.statusPrec) {
@@ -90,10 +95,11 @@ function get_node(key, cb) {
             if(node.weight) node.weight = parseInt(node.weight);
             if(node.start_time) node.start_time = parseInt(node.start_time);
             if(node.end_time) node.end_time = parseInt(node.end_time);
-            if(node._update_time) node._update_time = parseInt(node._update_time);
+            if(node.update_time) node.update_time = parseInt(node.update_time);
 
             //get childlist
             db.smembers(key+"._children", function(err, children) {
+                if(err) return cb(err);
                 node._children = children;
                 cb(null, node);
             });
@@ -107,15 +113,20 @@ function set_node(key, node, cb) {
     //assert(cb.arguments.length == 1);
     //TODO - validate?
 
+    node.key = key; 
     //if(node.progress === undefined) node.progress = 0;
-    if(node.weight == undefined) node.weight = 1; //relative complexity relative to siblings
-    if(node.start_time === undefined) node.start_time = Date.now();
+    if(node.weight === undefined) node.weight = 1; //relative complexity relative to siblings
+    if(node.start_time === undefined) {
+        node.start_time = Date.now();
+        logger.debug("setting start_time:"+node.start_time+" for "+key);
+    }
     if(node.progress == 1) node.end_time = Date.now(); //mark completion time 
 
-    node._update_time = Date.now(); //mark update time (so that we can remove old records later)
+    node.update_time = Date.now(); //mark update time (TODO - so that we can purge old records later)
 
-    logger.debug("setting node: "+key);
-    logger.debug(node);
+    //logger.debug("setting node: "+key);
+    //logger.debug(node);
+
     db.hmset(key, node, cb);
 }
 
@@ -151,7 +162,7 @@ function aggregate_children(key, node, cb) {
                     }
                     total_weight += child.weight;
 
-                    //aggregate status
+                    //aggregate status (I am not sure if I really should do this..)
                     if(!status) {
                         //simple case..
                         status = child.status; 
@@ -179,37 +190,34 @@ function get_state(key, depth, cb) {
         //status not yet posted, or incorrect key
         if(node === undefined) return cb();
 
-        node._key = key; //debug
-        //console.dir(node);
         depth--;
         if(depth > 0) {
-            //get_children(key, function(err, children) {
-                if(node._children.length == 0) {
-                    //doesn't have any children
-                    cb(null, node);
-                } else {
-                    node.tasks = [];
-                    async.eachSeries(node._children, function(child_key, next) {
-                        //console.log("getting state from "+child_key);
-                        get_state(child_key, depth, function(err, child_state) {
-                            node.tasks.push(child_state);
-                            next();
-                        });
-                    }, function(err) {
-                        node.tasks.sort(function(a,b) {
-                            return a.start_time - b.start_time;
-                        });
-                        cb(err, node);
+            if(node._children.length == 0) {
+                //doesn't have any children
+                cb(null, node);
+            } else {
+                node.tasks = [];
+                async.eachSeries(node._children, function(child_key, next) {
+                    //console.log("getting state from "+child_key);
+                    get_state(child_key, depth, function(err, child_state) {
+                        node.tasks.push(child_state);
+                        next();
                     });
-                } 
-            //});
+                }, function(err) {
+                    //TODO should I let client worry about ordering?
+                    node.tasks.sort(function(a,b) {
+                        return a.start_time - b.start_time;
+                    });
+                    cb(err, node);
+                });
+            } 
         } else {
             cb(null, node); //all done
         }
     });
 }
 
-function update(key, node, cb) {
+function update(key, node, updates, cb) {
     //logger.debug("updating "+key);
     //logger.debug(node);
     //assert(node); //shouldn't be null
@@ -221,7 +229,10 @@ function update(key, node, cb) {
         set_node(key, node, function(err) {
             if(err) throw err;
     
-            //logger.debug("processing parent");
+            //store updates in reverse order so that parent node goes before child
+            //since we are travering from child to parent. sending parent first to socket.io
+            //simplifies client task
+            updates.unshift(node);
 
             //find parent key
             var parent_key = null;
@@ -236,35 +247,70 @@ function update(key, node, cb) {
             if(pos !== -1) edge_key = parent_key.substring(pos+1);
             //console.log("edge of "+parent_key+" is "+edge_key);
             if(edge_key[0] == "_") return cb(null); //parent_key that starts with _ is a root (like _portal) Don't bubble up to it
-            
-            //make sure my parent knows me
-            //logger.debug("adding "+key+" to "+parent_key+"._children");
-            db.sadd(parent_key+"._children", key); 
 
-            //finally, bubble up to the parent
+            //get parent to bubble up to
             get_node(parent_key, function(err, p) {
                 if(err) throw err;
+                
                 //logger.debug("got parent "+parent_key);
                 //logger.debug(p);
                 //handle case where parent node wasn't reported (children reported first?)
-                if(p === undefined) p = {_children: [key]}; //parent don't exist yet.. but it needs to know about me at least so that progress can bubble up
-                update(parent_key, p, cb);
+                if(p === undefined) p = {_children: []}; 
+                
+                //make sure my parent knows me
+                if(p._children.indexOf(key) == -1)  {
+                    //console.log("making child know to parent");
+                    db.sadd(parent_key+"._children", key); 
+                    p._children.push(key);
+                }
+
+                //finally bububle up to the parent
+                update(parent_key, p, updates, cb);
             });
         });
     });
 }
 
 //handled new progress event
-function progress(message, headers, info, ack) {
+function progress(p, headers, info, ack) {
     //logger.info("message received key:"+info.routingKey);
     //logger.info(message);
 
     var key = info.routingKey;
+    var updates = [];
     //message._children = []; //don't have to aggregate children on the node specified (only worry about parents)
-    update(key, message, function(err) {
-        //somehow can't send ack.acknowlege as cb.. (something to do with 'this'?)
+    do_update(key, p, updates, function() {
         ack.acknowledge()
     });
+}
+
+function do_update(key, p, updates, cb) {
+    get_node(key, function(err, node) {
+        if(err) return cb(err);
+        if(!node) node = {}; //new one
+        logger.debug(p);
+        for(var k in p) node[k] = p[k]; //merge
+        update(key, node, updates, function(err) {
+            emit(updates);
+            cb();
+        });
+    });
+}
+
+function emit(updates) {
+    //send socket_io update to appriate room
+    if(socket_io && updates.length > 0) {
+        var first_update = updates[0];
+        //grab upto first non '_' key. (_test.fc1d66d80bd)
+        var tokens = first_update.key.split(".");
+        var room = "";
+        for(var i = 0;i < tokens.length;++i) {
+            if(room != "") room += ".";
+            room += tokens[i];
+            if(tokens[i][0] != "_") break;
+        };
+        socket_io.to(room).emit('update', updates);
+    }
 }
 
 //return current progress status
@@ -288,9 +334,10 @@ exports.update = function(req, res, next) {
         res.end();
     });
     */
-    //logger.debug(p);
-    update(key, p, function(err) {
-        if(err) return next(err);
+    var updates = [];
+    do_update(key, p, updates, function() {
         res.end();
     });
 }
+
+

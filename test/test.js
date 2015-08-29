@@ -25,8 +25,8 @@ describe("update", function() {
             var ex = conn.exchange(config.progress.exchange, {autoDelete: false, durable: true, type: 'topic'}, function(ex) {
                 logger.info("amqp connected to exchange:"+config.progress.exchange);
 
-                ex.publish("_portal.test123", {name: "test123 job", status: "waiting"});
-                ex.publish("_portal.test123.1", {name: "test123 task 1", status: "waiting"});
+                ex.publish("_portal.test123", {name: "Test123 job", msg: "Here is some random message", status: "waiting"});
+                ex.publish("_portal.test123.1", {name: "test123 task 1", msg: "Some random message for the task", status: "waiting"});
                 ex.publish("_portal.test123.1", {status: "running", progress: 0.5});
 
                 ex.publish("_portal.test123.2", {name: "test123 task 2", status: "waiting"});
