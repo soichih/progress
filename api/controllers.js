@@ -137,8 +137,6 @@ function get_parent_key(key) {
     return key.substring(0, pos);
 }
 
-//decide precedence for each status
-
 function aggregate_children(key, node, cb) {
     if(!node._children || node._children.length == 0) {
         //don't have any children
@@ -149,7 +147,7 @@ function aggregate_children(key, node, cb) {
         //do weighted aggregation
         var total_progress = 0;
         var total_weight = 0;
-        var status = null;
+        //var status = null;
         async.eachSeries(node._children, function(child_key, next) {
             //logger.debug("getting child:"+child_key);
             get_node(child_key, function(err, child) {
@@ -162,6 +160,7 @@ function aggregate_children(key, node, cb) {
                     }
                     total_weight += child.weight;
 
+                    /*
                     //aggregate status (I am not sure if I really should do this..)
                     if(!status) {
                         //simple case..
@@ -169,6 +168,7 @@ function aggregate_children(key, node, cb) {
                     } else {
                         if(config.statusPrec(status) < config.statusPrec(child.status)) status = child.status;
                     }
+                    */
                 }
                 next();
             });
@@ -177,7 +177,7 @@ function aggregate_children(key, node, cb) {
             if(total_weight != 0) {
                 node.progress = total_progress / total_weight;
             }
-            node.status = status;
+            //node.status = status;
             cb();
         });
     }

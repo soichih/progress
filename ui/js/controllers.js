@@ -91,17 +91,18 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
 controllers.controller('DetailController', 
 ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval', 'socket', 
 function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $location, $interval, socket) {
-    console.log("initialzing detailcontroller");
+    //console.log("initialzing detailcontroller");
 
+    $scope.debug = appconf.debug;
     $scope.title = appconf.title;
     $scope.rootkey = $routeParams.key;
 
     function load_data() {
-        console.log("requesting full status");
+        //console.log("requesting full status");
         $http.get(appconf.api+'/status?key='+$scope.rootkey+'&depth=4')
         .success(function(data) {
             $scope.status = data;
-            console.dir(data);
+            //console.dir(data);
             update_catalog($scope.status);
         })
         .error(function(err) {
@@ -139,7 +140,9 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
 
     //holds flags to show sub task tree
     $scope.show_tasks = {};
-    $scope.toggleShowTasks = function(key) {
+    $scope.toggleShowTasks = function(task) {
+        if(!task.tasks) return; //no tasks. nothing to show
+        var key = task.key;
         if($scope.show_tasks[key] === undefined) {
             $scope.show_tasks[key] = false; //false by default
         }
@@ -172,7 +175,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
                     console.log("received unwanted key :"+update.key);
                     return;
                 }
-                console.log(update);
+                //console.log(update);
                 var node = catalog[update.key];
                 if(!node) {
                     if(prev.tasks === undefined) prev.tasks = [update];

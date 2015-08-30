@@ -8,6 +8,8 @@ angular.module('app.config', [])
     version: '0.0.1',
     title: 'Progress',
 
+    debug: false,
+
     api: 'https://soichi7.ppa.iu.edu/api/progress',
     socket: {
         base: 'https://soichi7.ppa.iu.edu',

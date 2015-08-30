@@ -13,7 +13,7 @@ var app = angular.module('sca', [
 ]);
 
 app.factory('socket', ['appconf', 'socketFactory', function(appconf, socketFactory) {
-    console.dir(appconf.socket);
+    //console.dir(appconf.socket);
     return socketFactory({
         //prefix: 'foo~', //what is this for?
         ioSocket: io.connect(appconf.socket.base, appconf.socket.opts)
