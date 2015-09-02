@@ -8,6 +8,9 @@
         <button class="btn" ng-click="test_start()">Start</button>
     </div>
     <div class="well" ng-if="running">
+        <p class="alert alert-warning">You need to keep this tab active so that your browser won't throttle down the setInterval()
+        See <a href="http://blog.pivotal.io/labs/labs/chrome-and-firefox-throttle-settimeout-setinterval-in-inactive-tabs">for more details</a>
+        </p>
         <p>View progress here: <a href="#/detail/{{testid}}" target="_blank">#/detail/{{testid}}</a></p>
         <pre>{{msg_key}}
 {{msg}}</pre>

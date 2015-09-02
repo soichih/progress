@@ -18,7 +18,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
             var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
             return v.toString(16);
         });
-        sim = $interval(simulate, 100);
+        sim = $interval(simulate, 200);
     }
 
     $scope.test_stop = function() {
@@ -76,6 +76,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         
         $http.post(appconf.api+'/update', {key: key, p:progress[key]})
         .success(function() {
+            console.log("update posted");
             $scope.msg_key = key;
             $scope.msg = progress[key];
             mutex = false;
@@ -150,27 +151,26 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         //console.dir($scope.show_tasks);
     }
     
-    //grab key up to non _ token (like _test.f771b6c2b8f)
-    var tokens = $scope.rootkey.split(".");
-    var room = "";
-    for(var i = 0;i < tokens.length;++i) {
-        if(room != "") room += ".";
-        room += tokens[i];
-        if(tokens[i][0] != "_") break;
-    };
-    socket.emit('subscribe', room); //no cb?
-    load_data();
-
-    /*
-    var socket = io.connect(appconf.socket_io.base, appconf.socket_io.opt);
     socket.on('connect', function() {
+        //grab key up to non _ token (like _test.f771b6c2b8f)
+        var tokens = $scope.rootkey.split(".");
+        var room = "";
+        for(var i = 0;i < tokens.length;++i) {
+            if(room != "") room += ".";
+            room += tokens[i];
+            if(tokens[i][0] != "_") break;
+        };
+        socket.emit('subscribe', room); //no cb?
     });
 
-    */
+    load_data(); //now load the first data
+
     socket.on('update', function (data) {
         $scope.$apply(function() {
             var prev = $scope.status;
             data.forEach(function(update) {
+                console.log(update.key);
+
                 if(update.key.indexOf($scope.rootkey) == -1) {
                     console.log("received unwanted key :"+update.key);
                     return;
