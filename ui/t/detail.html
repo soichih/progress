@@ -16,16 +16,17 @@
             <li class="list-group-item">
                 <div class="row">
                     <div class="col-md-8">
+                        <!-- breaks layout in small window
                         <div class="pull-right" style="margin-top: 8px;">
-                            <span class="text-muted">At 
-                            <time>{{status.update_time | date:'medium'}}</time> <!-- <small class="text-muted pull-right">{{status.key}}</small> -->
-                            </span>
+                            <span class="text-muted">At <time>{{status.update_time | date:'medium'}}</time> </span>
                         </div>
+                        -->
                         <h3 style="text-transform: uppercase;font-weight: bold;" class="status-{{status.status}}">
                             {{status.status}}
                             <span style="margin-left: 10px;" ng-if="status.status == 'running'"><i class="fa fa-spinner fa-pulse"></i></span>
                         </h3>
                         <p class="status-msg status-{{status.status}}">{{status.msg}}</p>
+                        <span class="text-muted">At <time>{{status.update_time | date:'medium'}}</time> </span>
                     </div>
                     <div class="col-md-4">
                         <div class="progress" style="height: 35px;">
@@ -119,7 +120,7 @@
                                         <div class="progress" style="height: 18px;">
                                             <div class="progress-bar" ng-class="progressClass(subsubtask.status)" role="progressbar" 
                                             aria-valuenow="{{subsubtask.progress*100}}" aria-valuemin="0" aria-valuemax="100" 
-                                            style="width: {{subsubtask.progress*100}}%; font-size: 7pt; line-height: inherit;">
+                                            style="width: {{subsubtask.progress*100}}%; font-size: 7pt; line-height: 10px;">
                                                 {{subsubtask.progress*100 | number:0}}% 
                                             </div>
                                         </div>

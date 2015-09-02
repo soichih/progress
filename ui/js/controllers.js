@@ -36,19 +36,19 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         //generate rangom progress data
         var key = $scope.testid;
         if(!progress[key]) {     
-            var p = {name: "Test Job with id"+key, msg: "Created task"};
+            var p = {name: "Test Job with id"+key, msg: "Created task", status: "running"};
             $http.post(appconf.api+'/update', {key: key, p:p});
             progress[key] = p;
         }
         key += "."+parseInt(Math.random()*3);
         if(!progress[key]) {     
-            var p = {name: "Subtask with id"+key, msg: "Sub task created"};
+            var p = {name: "Subtask with id"+key, msg: "Sub task created", status: "running"};
             $http.post(appconf.api+'/update', {key: key, p:p});
             progress[key] = p;
         }
         key += "."+parseInt(Math.random()*3);
         if(!progress[key]) {     
-            var p = {name: "Sub-Subtask with id"+key, msg: "Sub-sub task created"};
+            var p = {name: "Sub-Subtask with id"+key, msg: "Sub-sub task created", status: "running"};
             $http.post(appconf.api+'/update', {key: key, p:p});
             progress[key] = p;
         }
@@ -70,7 +70,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
                 */
             }
         } else {
-            progress[key] = {progress: 0, weight: 1, status: "waiting", msg: "hello", name: "Doing nothing particular useful.."};
+            progress[key] = {progress: 0, weight: 1, status: "waiting", msg: "hello", name: "Doing nothing particularly useful.."};
         }
         //console.dir(progress[key]);
         
