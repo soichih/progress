@@ -67,7 +67,7 @@
                         </div>
                     </div>
                 </div><!--row-->
-                <div ng-if="show_tasks[task.key]">
+                <div ng-if="show_tasks[task.key]" class="slide-down">
                     <ul class="list-group">
                         <li class="list-group-item" ng-repeat="subtask in task.tasks" ng-if="task.tasks" style="background-color: #fafafa;">
                             <div class="row">
@@ -99,7 +99,7 @@
                                     </div>
                                 </div>
                             </div><!--row-->
-                            <div ng-if="show_tasks[subtask.key]" class="subsub_tasks">
+                            <div ng-if="show_tasks[subtask.key]" class="subsub_tasks slide-down">
                                 <div class="row" ng-repeat="subsubtask in subtask.tasks">
                                     <div class="col-md-6" class="status-{{subsubtask.status}}">
                                         <!-- let's display up to 3rd level -->

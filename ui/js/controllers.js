@@ -1,6 +1,6 @@
 'use strict';
 
-var controllers = angular.module('progressControllers', [ 'ui.bootstrap' ]);
+var controllers = angular.module('progressControllers', [ /*'ui.bootstrap'*/ ]);
 
 controllers.controller('HomeController', ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval',
 function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $location, $interval) {

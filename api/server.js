@@ -8,6 +8,7 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var winston = require('winston');
 var expressWinston = require('express-winston');
+var compress = require('compression');
 
 //mine
 var config = require('./config/config');
@@ -18,6 +19,7 @@ var controllers = require('./controllers');
 var app = express();
 app.use(bodyParser.json()); 
 app.use(expressWinston.logger(config.logger.winston));
+app.use(compress());
 
 //jwt auth is optional
 if(config.express.jwt) app.use(require('express-jwt')(config.express.jwt));
@@ -48,8 +50,8 @@ exports.start = function(cb) {
     var host = process.env.HOST || config.express.host || 'localhost';
     controllers.init(function() {
         var server = app.listen(port, host, function() {
-            console.log("ISDP request handler listening on port %d in %s mode", port, app.settings.env);
             if(cb) cb();
+            console.log("ISDP request handler listening on port %d in %s mode", port, app.settings.env);
         });
 
         //init socket.io

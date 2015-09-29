@@ -1,6 +1,6 @@
 'use strict';
 
-var app = angular.module('sca', [
+var app = angular.module('app', [
     'app.config',
     'ngSanitize',
     'ngRoute',
@@ -9,8 +9,20 @@ var app = angular.module('sca', [
     'toaster',
     'angular-loading-bar',
     'btford.socket-io',
-    'progressControllers' 
+    'progressControllers',
 ]);
+
+//can't quite do the slidedown animation through pure angular/css.. borrowing slideDown from jQuery..
+app.animation('.slide-down', ['$animateCss', function($animateCss) {
+    return {
+        enter: function(elem, done) {
+            $(elem).hide().slideDown("slow", done);
+        },
+        leave: function(elem, done) {
+            $(elem).slideUp("slow", done);
+        }
+    };
+}]);
 
 app.factory('socket', ['appconf', 'socketFactory', function(appconf, socketFactory) {
     //console.dir(appconf.socket);
