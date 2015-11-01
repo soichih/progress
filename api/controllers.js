@@ -41,6 +41,8 @@ exports.init = function(cb) {
             }
         }
     }
+
+    var connected_once = false;
     
     //do initializations in series
     async.series([
@@ -64,8 +66,12 @@ exports.init = function(cb) {
                         progress_q = q;
                         logger.info("binding to queue:"+config.progress.queue);
                         q.bind(ex, '#');
-                        
-                        done();
+    
+                        //sometime amqp re-connect.. I don't need to redo the rest of init for that.
+                        if(!connected_once) {
+                            connected_once = false;
+                            done();
+                        }
                     });
                 });
             });

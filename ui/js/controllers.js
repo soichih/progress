@@ -1,8 +1,13 @@
 'use strict';
 
-var controllers = angular.module('progressControllers', [ /*'ui.bootstrap'*/ ]);
+app.controller('HeaderController', ['$scope', 'appconf', '$route', 'toaster', '$http', 'serverconf', 'menu',
+function($scope, appconf, $route, toaster, $http, serverconf, menu) {
+    $scope.title = appconf.title;
+    serverconf.then(function(_c) { $scope.serverconf = _c; });
+    menu.then(function(_menu) { $scope.menu = _menu; });
+}]);
 
-controllers.controller('HomeController', ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval',
+app.controller('HomeController', ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval',
 function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $location, $interval) {
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +81,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         
         $http.post(appconf.api+'/update', {key: key, p:progress[key]})
         .success(function() {
-            console.log("update posted");
+            //console.log("update posted");
             $scope.msg_key = key;
             $scope.msg = progress[key];
             mutex = false;
@@ -89,7 +94,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
     }
 }]);
 
-controllers.controller('DetailController', 
+app.controller('DetailController', 
 ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval', 'socket', 
 function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $location, $interval, socket) {
     //console.log("initialzing detailcontroller");
@@ -169,7 +174,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         $scope.$apply(function() {
             var prev = $scope.status;
             data.forEach(function(update) {
-                console.log(update.key);
+                //console.log(update.key);
 
                 if(update.key.indexOf($scope.rootkey) == -1) {
                     console.log("received unwanted key :"+update.key);
@@ -191,7 +196,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
     });
 }]);
 
-controllers.directive('scaProgress', function() {
+app.directive('scaProgress', function() {
     return {
         restrict: 'E',
         scope: {

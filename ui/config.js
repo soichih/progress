@@ -14,11 +14,18 @@ angular.module('app.config', [])
     socket: {
         base: 'https://soichi7.ppa.iu.edu',
         opts: {path: '/api/progress/socket.io'},
-    }
+    },
+
+    profile_api: '../api/profile',
+    profile_url: '../profile',
+
+    //shared servive api and ui urls (for menus and stuff)
+    shared_api: '../api/shared',
+    shared_url: '../shared',
 
     //default location to redirect after successful login
     //default_redirect_url: 'https://soichi7.ppa.iu.edu/profile', 
 
-    //jwt_id: 'jwt'
+    jwt_id: 'jwt'
 });
 
