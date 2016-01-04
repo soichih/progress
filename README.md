@@ -51,7 +51,7 @@ Progress Service provides following APIs
 
 Just return a string if server is running
 
-* (get) /status
+* (get) /status/:key
 
 Load JSON data structure consisted of the current progress status tree.
 
@@ -60,13 +60,25 @@ key: progress path to construct the tree under
 depth: Depth of the progress tree to construct (default 1). Each parent node will have _children array containing child keys. Even if you 
 decide not to load it.
 
-* (post) /update
+* (post) /status/:key
 
 REST interface equivalent of AMQP queue. The request will be immediately processed by the progress service.
 
-Sample input
+Sample code
 ```
-{key: "(progress path to update)", p: {progress: 0.8; msg: "something"} }
+request({
+    method: "POST",
+    url: config.progress.api+'/status/_sca.123.prep',
+    /*
+    headers: {
+        'Authorization': 'Bearer '+config.progress.jwt,
+    },
+    */
+    json: {status: "running", progress: 0.8, name: "Important Work", msg: "doing something important"},
+}, function(err, res, body){
+    if(cb) cb(err, body);
+});
+
 ```
 
 * (socket.io) socket.on('subscribe', function(key){})

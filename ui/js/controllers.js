@@ -1,10 +1,11 @@
 'use strict';
 
-app.controller('HeaderController', ['$scope', 'appconf', '$route', 'toaster', '$http', 'serverconf', 'menu',
-function($scope, appconf, $route, toaster, $http, serverconf, menu) {
+app.controller('HeaderController', ['$scope', 'appconf', '$route', 'toaster', '$http', 'menu',
+function($scope, appconf, $route, toaster, $http, menu) {
     $scope.title = appconf.title;
-    serverconf.then(function(_c) { $scope.serverconf = _c; });
-    menu.then(function(_menu) { $scope.menu = _menu; });
+    //serverconf.then(function(_c) { $scope.serverconf = _c; });
+    //menu.then(function(_menu) { $scope.menu = _menu; });
+    $scope.menu = menu;
 }]);
 
 app.controller('HomeController', ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval',
@@ -17,7 +18,6 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
     $scope.running = false;
     $scope.test_start = function() {
         $scope.running = true;
-
         //create some random id
         $scope.testid = '_test.xxxxxxxxxxx'.replace(/[xy]/g, function(c) {
             var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
@@ -42,19 +42,19 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         var key = $scope.testid;
         if(!progress[key]) {     
             var p = {name: "Test Job with id"+key, msg: "Created task", status: "running"};
-            $http.post(appconf.api+'/update', {key: key, p:p});
+            $http.post(appconf.api+'/status/'+key, p);
             progress[key] = p;
         }
         key += "."+parseInt(Math.random()*3);
         if(!progress[key]) {     
             var p = {name: "Subtask with id"+key, msg: "Sub task created", status: "running"};
-            $http.post(appconf.api+'/update', {key: key, p:p});
+            $http.post(appconf.api+'/status/'+key, p);
             progress[key] = p;
         }
         key += "."+parseInt(Math.random()*3);
         if(!progress[key]) {     
             var p = {name: "Sub-Subtask with id"+key, msg: "Sub-sub task created", status: "running"};
-            $http.post(appconf.api+'/update', {key: key, p:p});
+            $http.post(appconf.api+'/status/'+key, p);
             progress[key] = p;
         }
         key += "."+parseInt(Math.random()*3);
@@ -79,7 +79,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         }
         //console.dir(progress[key]);
         
-        $http.post(appconf.api+'/update', {key: key, p:progress[key]})
+        $http.post(appconf.api+'/status/'+key, progress[key])
         .success(function() {
             //console.log("update posted");
             $scope.msg_key = key;
@@ -105,7 +105,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
 
     function load_data() {
         //console.log("requesting full status");
-        $http.get(appconf.api+'/status?key='+$scope.rootkey+'&depth=4')
+        $http.get(appconf.api+'/status/'+$scope.rootkey+'?depth=4')
         .success(function(data) {
             $scope.status = data;
             //console.dir(data);

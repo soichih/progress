@@ -1,5 +1,4 @@
-
-<div class="container">
+<div class="container-fluid">
     <h2>Progress</h2>
     <p>Displays detailed progress information for given progress key</p>
 
@@ -12,8 +11,7 @@
         See <a href="http://blog.pivotal.io/labs/labs/chrome-and-firefox-throttle-settimeout-setinterval-in-inactive-tabs">for more details</a>
         </p>
         <p>View progress here: <a href="#/detail/{{testid}}" target="_blank">#/detail/{{testid}}</a></p>
-        <pre>{{msg_key}}
-{{msg}}</pre>
+        <pre>{{msg_key}} {{msg}}</pre>
         <button class="btn" ng-click="test_stop()">Stop</button>
     </div>
 </div>

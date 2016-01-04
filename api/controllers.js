@@ -8,9 +8,11 @@ var winston = require('winston');
 var amqp = require('amqp');
 var redis = require('redis');
 var async = require('async');
+var express = require('express');
+var router = express.Router();
 
 //mine
-var config = require('./config/config');
+var config = require('./config');
 var logger = new winston.Logger(config.logger.winston);
 
 //polyfill?
@@ -30,6 +32,7 @@ exports.set_socketio = function(_socket_io) {
 exports.init = function(cb) {
     if(!config.statusPrec) {
         config.statusPrec = function statusPrec(status) {
+            //TODO - I should make this configurable.. or make so that the latest status takes precedence?
             switch(status) {
             case "running": return 4;
             case "failed": return 3;
@@ -82,7 +85,6 @@ exports.init = function(cb) {
 
         //finally, subscribe to the progress_q
         function(done) {
-            //console.log("subscriging to progress queue");
             progress_q.subscribe({ack: true}, progress);
             done();
         }
@@ -120,19 +122,13 @@ function set_node(key, node, cb) {
     //TODO - validate?
 
     node.key = key; 
-    //if(node.progress === undefined) node.progress = 0;
     if(node.weight === undefined) node.weight = 1; //relative complexity relative to siblings
     if(node.start_time === undefined) {
         node.start_time = Date.now();
         logger.debug("setting start_time:"+node.start_time+" for "+key);
     }
     if(node.progress == 1) node.end_time = Date.now(); //mark completion time 
-
     node.update_time = Date.now(); //mark update time (TODO - so that we can purge old records later)
-
-    //logger.debug("setting node: "+key);
-    //logger.debug(node);
-
     db.hmset(key, node, cb);
 }
 
@@ -146,35 +142,20 @@ function get_parent_key(key) {
 function aggregate_children(key, node, cb) {
     if(!node._children || node._children.length == 0) {
         //don't have any children
-        //logger.debug("no child for "+key);
-        //console.dir(node);
         cb();
     } else {
         //do weighted aggregation
         var total_progress = 0;
         var total_weight = 0;
-        //var status = null;
         async.eachSeries(node._children, function(child_key, next) {
-            //logger.debug("getting child:"+child_key);
             get_node(child_key, function(err, child) {
                 if(err) throw err;
-                //console.dir(child);
                 if(child !== undefined) { //child could go missing?
                     //aggregate progess
                     if(child.progress) {
                         total_progress += child.progress * child.weight;
                     }
                     total_weight += child.weight;
-
-                    /*
-                    //aggregate status (I am not sure if I really should do this..)
-                    if(!status) {
-                        //simple case..
-                        status = child.status; 
-                    } else {
-                        if(config.statusPrec(status) < config.statusPrec(child.status)) status = child.status;
-                    }
-                    */
                 }
                 next();
             });
@@ -183,7 +164,6 @@ function aggregate_children(key, node, cb) {
             if(total_weight != 0) {
                 node.progress = total_progress / total_weight;
             }
-            //node.status = status;
             cb();
         });
     }
@@ -224,10 +204,6 @@ function get_state(key, depth, cb) {
 }
 
 function update(key, node, updates, cb) {
-    //logger.debug("updating "+key);
-    //logger.debug(node);
-    //assert(node); //shouldn't be null
-
     //first aggreage child info (to calculate progress)
     aggregate_children(key, node, function() {
         
@@ -244,33 +220,32 @@ function update(key, node, updates, cb) {
             var parent_key = null;
             var pos = key.lastIndexOf(".");
             if(pos !== -1) parent_key = key.substring(0, pos);
-            //console.log("parent of "+key+" is "+parent_key);
             if(parent_key == null) return cb(null); //we've bubbled up to the root... all done
             
             //find next parent edge
             var edge_key = parent_key;
             pos = parent_key.lastIndexOf(".");
             if(pos !== -1) edge_key = parent_key.substring(pos+1);
-            //console.log("edge of "+parent_key+" is "+edge_key);
             if(edge_key[0] == "_") return cb(null); //parent_key that starts with _ is a root (like _portal) Don't bubble up to it
 
             //get parent to bubble up to
             get_node(parent_key, function(err, p) {
                 if(err) throw err;
                 
-                //logger.debug("got parent "+parent_key);
-                //logger.debug(p);
                 //handle case where parent node wasn't reported (children reported first?)
                 if(p === undefined) p = {_children: []}; 
                 
                 //make sure my parent knows me
-                if(p._children.indexOf(key) == -1)  {
-                    //console.log("making child know to parent");
+                if(!~p._children.indexOf(key))  {
                     db.sadd(parent_key+"._children", key); 
                     p._children.push(key);
                 }
 
-                //finally bububle up to the parent
+                //bubble up msg
+                if(node.msg) p.msg = node.msg;
+                //if(node.name) p.msg = node.name + " " +p.msg; //prefix with node name if available (not very often that this is useful)
+    
+                //finally recurse up to the parent
                 update(parent_key, p, updates, cb);
             });
         });
@@ -279,12 +254,8 @@ function update(key, node, updates, cb) {
 
 //handled new progress event
 function progress(p, headers, info, ack) {
-    //logger.info("message received key:"+info.routingKey);
-    //logger.info(message);
-
     var key = info.routingKey;
     var updates = [];
-    //message._children = []; //don't have to aggregate children on the node specified (only worry about parents)
     do_update(key, p, updates, function() {
         ack.acknowledge()
     });
@@ -320,21 +291,22 @@ function emit(updates) {
 }
 
 //return current progress status
-exports.status = function(req, res, next) {
-    if(!req.query.key) throw new Error("please specify key param");
-    var key = req.query.key;
+router.get('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsRequired: false}),*/ function(req, res, next) {
+    //if(!req.query.key) throw new Error("please specify key param");
+    var key = req.params.key;
     var depth = req.query.depth || 1;
-
     get_state(key, depth, function(err, state) {
         if(err) return next(err);
         res.json(state);
     });
-}
+});
 
-exports.update = function(req, res, next) {
-    var key = req.body.key;
-    var p = req.body.p;
-    /* routing through amqp somehow locks up (or kills?) the app
+//let's make this public for now.. in the future, progress service can issue its own authentication token (like imagex service?)
+router.post('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsRequired: false}),*/ function(req, res, next) {
+    var key = req.params.key;
+    var p = req.body;
+    logger.debug("key:"+key+"\n"+JSON.stringify(p, null, 4));
+    /*
     progress_ex.publish(key, p, function(err) {
         if(err) return next(err);
         res.end();
@@ -344,6 +316,6 @@ exports.update = function(req, res, next) {
     do_update(key, p, updates, function() {
         res.end();
     });
-}
+});
 
-
+exports.router  = router;

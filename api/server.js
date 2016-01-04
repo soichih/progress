@@ -11,7 +11,7 @@ var expressWinston = require('express-winston');
 var compress = require('compression');
 
 //mine
-var config = require('./config/config');
+var config = require('./config');
 var logger = new winston.Logger(config.logger.winston);
 var controllers = require('./controllers');
 
@@ -21,13 +21,15 @@ app.use(bodyParser.json());
 app.use(expressWinston.logger(config.logger.winston));
 app.use(compress());
 
-//jwt auth is optional
-if(config.express.jwt) app.use(require('express-jwt')(config.express.jwt));
+//if(config.express.jwt) app.use(require('express-jwt')(config.express.jwt));
 
 //setup routes
 app.get('/health', function(req, res) { res.json({status: 'running'}); });
+/*
 app.get('/status', controllers.status);
 app.post('/update', controllers.update);
+*/
+app.use('/', require('./controllers').router);
 
 //error handling
 app.use(expressWinston.errorLogger(config.logger.winston)); 
@@ -61,19 +63,6 @@ exports.start = function(cb) {
                 console.log("socket joining "+key);
                 socket.join(key);
             });
-            //socket will leave automatically upon disconnection.. 
-            /*
-            socket.on('unsubscribe', function(key) {
-                socket.leave(key);
-            });
-            */
-            //socket.emit('update', { hello: 'world', '/whatever': 'will get' });
-            /*
-            socket.emit('news', { hello2: 'world2'});
-            socket.on('my other event', function (data) {
-                logger.debug(data);
-            });
-            */
         });
         controllers.set_socketio(io);
     });

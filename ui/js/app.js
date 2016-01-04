@@ -13,6 +13,7 @@ var app = angular.module('app', [
     'sca-shared',
 ]);
 
+/*
 //just a service to load all users from auth service
 app.factory('serverconf', ['appconf', '$http', function(appconf, $http) {
     return $http.get(appconf.api+'/config')
@@ -20,7 +21,7 @@ app.factory('serverconf', ['appconf', '$http', function(appconf, $http) {
         return res.data;
     });
 }]);
-
+*/
 
 //can't quite do the slidedown animation through pure angular/css.. borrowing slideDown from jQuery..
 app.animation('.slide-down', ['$animateCss', function($animateCss) {
@@ -50,15 +51,9 @@ app.config(['cfpLoadingBarProvider', function(cfpLoadingBarProvider) {
 //load menu and profile by promise chaining
 //http://www.codelord.net/2015/09/24/$q-dot-defer-youre-doing-it-wrong/
 //https://www.airpair.com/angularjs/posts/angularjs-promises
+/*
 app.factory('menu', ['appconf', '$http', 'jwtHelper', '$sce', function(appconf, $http, jwtHelper, $sce) {
     var menu = {
-        /*
-        header: {
-            label: appconf.title,
-            icon: $sce.trustAsHtml("<img src=\""+appconf.icon_url+"\">"),
-            url: "#/",
-        }
-        */
     };
 
     return $http.get(appconf.shared_api+'/menu/top').then(function(res) {
@@ -78,6 +73,46 @@ app.factory('menu', ['appconf', '$http', 'jwtHelper', '$sce', function(appconf, 
     }, function(err) {
         console.log("couldn't load profile");
     });
+}]);
+*/
+app.factory('menu', ['appconf', '$http', 'jwtHelper', '$sce', 'scaMessage', 'scaMenu', '$q',
+function(appconf, $http, jwtHelper, $sce, scaMessage, scaMenu, $q) {
+
+    var jwt = localStorage.getItem(appconf.jwt_id);
+    var menu = {
+        header: {
+            //label: appconf.title,
+            //icon: $sce.trustAsHtml("<img src=\""+appconf.icon_url+"\">"),
+            //url: "#/",
+        },
+        top: scaMenu,
+        user: null, //to-be-loaded
+        _profile: null, //to-be-loaded
+    };
+
+    var jwt = localStorage.getItem(appconf.jwt_id);
+    if(jwt) menu.user = jwtHelper.decodeToken(jwt);
+    if(menu.user) {
+        $http.get(appconf.profile_api+'/public/'+menu.user.sub).then(function(res) {
+            menu._profile = res.data;
+            if(res.data) {
+                //logged in, but does user has email?
+                if(res.data.email) {
+                    return menu; //TODO - return return to what?
+                } else {
+                    //force user to update profile
+                    //TODO - do I really need to?
+                    scaMessage.info("Please update your profile before using application.");
+                    sessionStorage.setItem('profile_settings_redirect', window.location.toString());
+                    document.location = appconf.profile_url;
+                }
+            } else {
+                //not logged in.
+                return menu; //TODO return to what?
+            }
+        });
+    }
+    return menu;
 }]);
 
 //configure route
