@@ -65,6 +65,9 @@ decide not to load it.
 REST interface equivalent of AMQP queue. The request will be immediately processed by the progress service.
 
 Sample code
+
+Node
+
 ```
 request({
     method: "POST",
@@ -79,6 +82,19 @@ request({
     if(cb) cb(err, body);
 });
 
+```
+
+Bash
+
+```
+curl -X POST -H "Content-Type: application/json" -d "{\"status\": \"waiting\", \"progress\": 0, \"msg\":\"Downloading data from $dataurl\"}" $SCA_PROGRESS_URL
+
+```
+
+Matlab
+
+```
+webwrite(getenv('SCA_PROGRESS_URL'), struct('msg','Application almost done!','progress', 0.99), weboptions('MediaType','application/json'));
 ```
 
 * (socket.io) socket.on('subscribe', function(key){})
