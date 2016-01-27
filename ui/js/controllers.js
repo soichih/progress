@@ -174,7 +174,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         $scope.$apply(function() {
             var prev = $scope.status;
             data.forEach(function(update) {
-                //console.log(update.key);
+                console.log(update.key);
 
                 if(update.key.indexOf($scope.rootkey) == -1) {
                     console.log("received unwanted key :"+update.key);

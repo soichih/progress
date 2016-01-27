@@ -69,6 +69,7 @@ Sample code
 Node
 
 ```
+var request = require('request');
 request({
     method: "POST",
     url: config.progress.api+'/status/_sca.123.prep',
@@ -129,3 +130,9 @@ Progress UI expects following status, but you can set any status you'd like - es
 I need to purge old progress records so that it won't clobber redis
 
 Should I use Server-Sent-Event - instead of socket.io? socket.io might be a bit overkill.. but supported on more browsers? Problem is.. I need to pass jwt via the URL parameter since EventSource doesn't seems to allow me to set header. (inspiration for server side code is at http://html5doctor.com/server-sent-events/)
+
+* Show aggregate progress bar of all child steps on parent
+* Add link to sub-level progress if child has more than 4 level
+* deploy to core-test1/test2
+
+* peformance issue when there are a lot of child nodes

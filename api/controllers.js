@@ -102,11 +102,13 @@ function get_node(key, cb) {
             if(node.progress) node.progress = parseFloat(node.progress);
             if(node.weight) node.weight = parseInt(node.weight);
             if(node.start_time) node.start_time = parseInt(node.start_time);
-            if(node.end_time) node.end_time = parseInt(node.end_time);
+            //if(node.end_time) node.end_time = parseInt(node.end_time);
             if(node.update_time) node.update_time = parseInt(node.update_time);
 
             //get childlist
+            logger.debug("getting smembers:"+key+"._children");
             db.smembers(key+"._children", function(err, children) {
+                logger.debug("done");
                 if(err) return cb(err);
                 node._children = children;
                 cb(null, node);
@@ -127,7 +129,7 @@ function set_node(key, node, cb) {
         node.start_time = Date.now();
         logger.debug("setting start_time:"+node.start_time+" for "+key);
     }
-    if(node.progress == 1) node.end_time = Date.now(); //mark completion time 
+    //if(node.progress == 1) node.end_time = Date.now(); //mark completion time 
     node.update_time = Date.now(); //mark update time (TODO - so that we can purge old records later)
     db.hmset(key, node, cb);
 }
