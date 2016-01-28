@@ -12,19 +12,19 @@
   ],
   "dependencies": {
     "bootstrap": "~3.3.5",
-    "angular": "~1.4.1",
+    "angular": "~1.4.9",
     "fontawesome": "~4.3.0",
-    "angular-ui-select": "~0.11.1",
-    "angular-sanitize": "~1.3.14",
-    "angular-route": "~1.4.0",
-    "angular-bootstrap": "~0.13.0",
+    "angular-ui-select": "~0.14.2",
+    "angular-sanitize": "~1.4.9",
+    "angular-route": "~1.4.9",
+    "angular-bootstrap": "~1.1.1",
     "angular-jwt": "~0.0.9",
-    "angular-animate": "~1.4.1",
+    "angular-animate": "~1.4.9",
     "angularjs-toaster": "~0.4.14",
-    "angular-cookies": "~1.4.0",
+    "angular-cookies": "~1.4.9",
     "angular-loading-bar": "~0.7.1",
     "angular-socket-io": "~0.7.0",
-    "bootswatch": "~3.3.6+1"
+    "bootswatch": "~3.3.6"
   },
   "resolutions": {
     "angular": "1.4.5"

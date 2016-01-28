@@ -2,3 +2,4 @@ nohup_server.*
 node_modules
 config
 *.log
+barn
