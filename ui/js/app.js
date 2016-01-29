@@ -118,16 +118,16 @@ function(appconf, $http, jwtHelper, $sce, scaMessage, scaMenu, $q) {
 //configure route
 app.config(['$routeProvider', 'appconf', function($routeProvider, appconf) {
     $routeProvider
-    .when('/home', {
-        templateUrl: 't/home.html',
-        controller: 'HomeController',
+    .when('/about', {
+        templateUrl: 't/about.html',
+        controller: 'AboutController',
     })
     .when('/detail/:key', {
         templateUrl: 't/detail.html',
         controller: 'DetailController',
     })
     .otherwise({
-        redirectTo: '/home'
+        redirectTo: '/about'
     });
 }]);
 

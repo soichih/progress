@@ -8,7 +8,7 @@ function($scope, appconf, $route, toaster, $http, menu) {
     $scope.menu = menu;
 }]);
 
-app.controller('HomeController', ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval',
+app.controller('AboutController', ['$scope', 'appconf', '$route', 'toaster', '$http', '$cookies', '$routeParams', '$location', '$interval',
 function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $location, $interval) {
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,30 +103,35 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
     $scope.title = appconf.title;
     $scope.rootkey = $routeParams.key;
 
+    load_data(); 
+
     function load_data() {
         //console.log("requesting full status");
-        $http.get(appconf.api+'/status/'+$scope.rootkey+'?depth=4')
+        $http.get(appconf.api+'/status/'+$scope.rootkey+'?depth=5')
         .success(function(data) {
             $scope.status = data;
-            //console.dir(data);
-            update_catalog($scope.status);
+            //update_catalog($scope.status);
+            socket.on('update', process_updates);
         })
         .error(function(err) {
             toaster.error("Failed to load progress information: "+err.message);
-            $scope.status = null;
+            $scope.status = {};
         });
     }
 
+    /*
     //create a catalog pointing to different nodes in $scope.status
     var catalog = {};
     function update_catalog(node) {
         catalog[node.key] = node;
         if(node.tasks) node.tasks.forEach(update_catalog);
     }
+    */
     
+    //TODO - I am not sure if this is really necessary?
     //start refreshing the entire status (to keep it synced) 
     //for more fine grained update comes via socket.io
-    $interval(load_data, 1000*60*3); //every 3 minutes?
+    $interval(load_data, 1000*60*10);
 
     $scope.progressClass = function(status) {
         switch(status) {
@@ -155,8 +160,19 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         $scope.show_tasks[key] = !$scope.show_tasks[key];
         //console.dir($scope.show_tasks);
     }
-    
-    socket.on('connect', function() {
+
+   
+    //I might already be connected to socket.io if user gets here via route change
+    if(!socket.connected) {
+        socket.on('connect', function() {
+            socket.connected = true;
+            subscribe();
+        });
+    } else {
+        subscribe();
+    }
+
+    function subscribe() {
         //grab key up to non _ token (like _test.f771b6c2b8f)
         var tokens = $scope.rootkey.split(".");
         var room = "";
@@ -165,35 +181,74 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
             room += tokens[i];
             if(tokens[i][0] != "_") break;
         };
-        socket.emit('subscribe', room); //no cb?
-    });
-
-    load_data(); //now load the first data
-
-    socket.on('update', function (data) {
+        console.log("joining room: "+room);
+        socket.emit('join', room); //no cb?
+        $scope.$on('$routeChangeStart', function(next, current) { 
+            console.log("leaving room: "+room);
+            socket.emit('leave', room);
+            socket.removeAllListeners();
+        });
+    }
+ 
+    function process_updates(updates) {
+        console.dir(updates);
         $scope.$apply(function() {
-            var prev = $scope.status;
-            data.forEach(function(update) {
-                console.log(update.key);
-
+            if(!$scope.status) $scope.status = {};  
+            var node = $scope.status;
+            //handle root
+            var update = updates.shift();
+            for(var key in update) node[key] = update[key]; //apply update
+            //handle child tasks
+            updates.forEach(function(update) {
+                //search the key under tasks
+                if(node.tasks == undefined) {
+                    //first child
+                    //console.log("first ever child for ");
+                    //console.dir(node);
+                    node.tasks = [update];
+                    node = update;
+                } else {
+                    //look for next task
+                    var found = false;
+                    node.tasks.forEach(function(task) {
+                        if(task.key == update.key) {
+                            found = true;
+                            node = task;
+                            for(var key in update) node[key] = update[key]; //apply update
+                        }
+                    }); 
+                    //first time seen
+                    if(!found) {
+                        //console.log("couldn't find "+update.key);
+                        node.tasks.push(update);
+                        node = update;
+                    }
+                }
+                
+                //console.log(update.key);
+                /* this should never happen now.. 
                 if(update.key.indexOf($scope.rootkey) == -1) {
-                    console.log("received unwanted key :"+update.key);
+                    console.log("received key("+update.key+") that's outside of my rootkey:"+$scope.rootkey);
                     return;
                 }
+                */
                 //console.log(update);
+                /*
                 var node = catalog[update.key];
-                if(!node) {
-                    if(prev.tasks === undefined) prev.tasks = [update];
-                    else prev.tasks.push(update);
-                    catalog[update.key] = update;
-                    prev = update;
-                } else {
+                if(node) {
                     for(var key in update) node[key] = update[key]; //apply update
-                    prev = node;
+                    parent = node;
+                } else {
+                    if(parent.tasks === undefined) parent.tasks = [update];
+                    else parent.tasks.push(update);
+                    catalog[update.key] = update;
+                    parent = update;
                 }
+                */
             });
+            console.dir($scope.status);
         });
-    });
+    }
 }]);
 
 app.directive('scaProgress', function() {
