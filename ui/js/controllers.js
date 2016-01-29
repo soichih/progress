@@ -191,7 +191,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
     }
  
     function process_updates(updates) {
-        console.dir(updates);
+        //console.dir(updates);
         $scope.$apply(function() {
             if(!$scope.status) $scope.status = {};  
             var node = $scope.status;
@@ -246,7 +246,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
                 }
                 */
             });
-            console.dir($scope.status);
+            //console.dir($scope.status);
         });
     }
 }]);

@@ -59,9 +59,13 @@ exports.start = function(cb) {
         //init socket.io
         var io = require('socket.io').listen(server);
         io.on('connection', function (socket) {
-            socket.on('subscribe', function (key) {
-                console.log("socket joining "+key);
+            socket.on('join', function (key) {
+                console.log("socket.io join "+key);
                 socket.join(key);
+            });
+            socket.on('leave', function (key) {
+                console.log("socket.io leave "+key);
+                socket.leave(key);
             });
         });
         controllers.set_socketio(io);

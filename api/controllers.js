@@ -80,16 +80,18 @@ exports.init = function(cb) {
 }
 
 function get_node(key, cb) {
-    logger.debug("hgetall:"+key);
+    //logger.debug("hgetall:"+key);
     db.hgetall(key, function(err, node) {
         if(err) return cb(err);
         if(node) {
             //fix field types
             if(node.progress) node.progress = parseFloat(node.progress);
-            if(node.weight) node.weight = parseInt(node.weight);
+            if(node.weight) node.weight = parseFloat(node.weight);
             if(node.start_time) node.start_time = parseInt(node.start_time);
             //if(node.end_time) node.end_time = parseInt(node.end_time);
             if(node.update_time) node.update_time = parseInt(node.update_time);
+            if(node._total_progress) node._total_progress = parseFloat(node._total_progress);
+            if(node._total_weight) node._total_weight = parseFloat(node._total_weight);
             cb(null, node);
         } else {
             cb(null); //not found
@@ -98,7 +100,7 @@ function get_node(key, cb) {
 }
 
 function get_children(key, cb) {
-    logger.debug("smembers:"+key+"._children");
+    //logger.debug("smembers:"+key+"._children");
     db.smembers(key+"._children", cb);
 }
 
@@ -107,14 +109,18 @@ function set_node(key, node, cb) {
     //TODO - validate?
 
     node.key = key; 
-    if(node.weight === undefined) node.weight = 1; //relative complexity relative to siblings
+
+    if(node._total_progress === undefined) node._total_progress = 0;
+    if(node._total_weight === undefined) node._total_weight = 0;
+
+    if(node.weight === undefined) node.weight = 1; //relative complexity relative to my siblings
     if(node.start_time === undefined) {
         node.start_time = Date.now();
-        logger.debug("setting start_time:"+node.start_time+" for "+key);
+        //logger.debug("setting start_time:"+node.start_time+" for "+key);
     }
     //if(node.progress == 1) node.end_time = Date.now(); //mark completion time 
     node.update_time = Date.now(); //mark update time (TODO - so that we can purge old records later)
-    logger.debug("hmset:"+key);
+    //logger.debug("hmset:"+key);
     db.hmset(key, node, cb);
 }
 
@@ -125,6 +131,7 @@ function get_parent_key(key) {
     return key.substring(0, pos);
 }
 
+/*
 function aggregate_children(key, node, cb) {
     get_children(key, function(err, children) {
         if(err) return cb(err);
@@ -158,11 +165,12 @@ function aggregate_children(key, node, cb) {
         }
     });
 }
+*/
 
-function update(key, node, updates, cb) {
+function update(key, node, updates, delta, cb) {
     //first aggreage child info (to calculate progress)
-    aggregate_children(key, node, function(err) {
-        if(err) return cb(err); 
+    //aggregate_children(key, node, function(err) {
+    //    if(err) return cb(err); 
         //then update the node received
         set_node(key, node, function(err) {
             if(err) return cb(err);
@@ -187,27 +195,59 @@ function update(key, node, updates, cb) {
             //get parent to bubble up to
             get_node(parent_key, function(err, p) {
                 if(err) return cb(err);
-                if(p === undefined) p = {}; //parent doesn't exist yet
+                var parent_delta = {progress: 0, weight: 0};
+                if(p === undefined) {
+                    //parent doesn't exist yet.. create placeholder
+                    p = {      
+                        _total_progress: 0, 
+                        _total_weight: 0, 
+                        progress: 0, 
+                        weight: 1
+                    }; 
+                    parent_delta.weight = 1;
+                }
                 
-                get_children(parent_key, function(err, children) {
-                    if(err) return cb(err);
+                //bubble up msg
+                if(node.msg) p.msg = node.msg;
+                //if(node.name) p.msg = node.name + " " +p.msg; //prefix with node name if available (not very often that this is useful)
+                //console.log("parent before");
+                //console.dir(p);
 
-                    //make sure my parent knows me
-                    if(!~children.indexOf(key))  {
-                        logger.debug("sadd:"+parent_key+"._children "+key);
-                        db.sadd(parent_key+"._children", key); 
-                    }
-                    
-                    //bubble up msg
-                    if(node.msg) p.msg = node.msg;
-                    //if(node.name) p.msg = node.name + " " +p.msg; //prefix with node name if available (not very often that this is useful)
-        
-                    //finally recurse up to the parent
-                    update(parent_key, p, updates, cb);
+                //update parent total
+                p._total_progress += delta.progress;
+                p._total_weight += delta.weight;
+                if(p._total_weight != 0) {
+                    var new_progress = p._total_progress / p._total_weight;
+                    //console.log("parent's new progress: "+new_progress);
+                    parent_delta.progress = new_progress - p.progress;
+                    p.progress = new_progress;
+                }
+                /*
+                console.log("delta");
+                console.dir(delta);
+                console.log("parent(delta applied)");
+                console.dir(p);
+                console.log("parent-delta");
+                console.dir(parent_delta);
+                */
+
+                update(parent_key, p, updates, parent_delta, function(err) {
+                    if(err) return cb(err);
+            
+                    //lastly.. make sure my parent knows me
+                    get_children(parent_key, function(err, children) {
+                        if(err) return cb(err);
+                        if(!~children.indexOf(key))  {
+                            //logger.debug("sadd:"+parent_key+"._children "+key);
+                            db.sadd(parent_key+"._children", key); 
+                        }
+                        cb();
+                    });
                 });
+
             });
         });
-    });
+    //});
 }
 
 //handled new progress event from amqp
@@ -220,14 +260,30 @@ function progress(p, headers, info, ack) {
     });
 }
 
+//amount of progress / weight change as seen by its parent
+function compute_delta(o, n) {
+    var d = {
+        progress: (n.progress*n.weight) - (o.progress*o.weight),
+        weight: n.weight - o.weight,
+    };
+    return d;
+}
+
+
 function do_update(key, p, /*updates,*/ cb) {
     get_node(key, function(err, node) {
         if(err) return cb(err);
-        if(!node) node = {}; //new one
-        logger.debug(p);
-        for(var k in p) node[k] = p[k]; //merge
-        var updates = [];
-        update(key, node, updates, function(err) {
+        if(!node) {
+            node = {weight: 0, progress: 0}; //new one
+        }
+        if(p.weight == undefined) p.weight = 1;
+        if(p.progress == undefined) p.progress = 0;
+        var delta = compute_delta(node, p);
+        //console.log("delta is");
+        //console.dir(delta);
+        for(var k in p) node[k] = p[k]; //update values
+        var updates = []; //list updates to be emitted to subscribers(ui)
+        update(key, node, updates, delta, function(err) {
             if(err) return cb(err);
             emit(updates);
             cb();
@@ -235,8 +291,8 @@ function do_update(key, p, /*updates,*/ cb) {
     });
 }
 
+//emit updates via socket.io
 function emit(updates) {
-    //send socket_io update to appriate room
     if(socket_io && updates.length > 0) {
         var first_update = updates[0];
         //grab upto first non '_' key. (_test.fc1d66d80bd)
@@ -247,6 +303,8 @@ function emit(updates) {
             room += tokens[i];
             if(tokens[i][0] != "_") break;
         };
+        //logger.debug("emitting updates to "+room);
+        //logger.debug(updates);
         socket_io.to(room).emit('update', updates);
     }
 }
@@ -262,6 +320,7 @@ function get_state(key, depth, cb) {
         if(depth > 0) {
             get_children(key, function(err, children) {
                 if(err) return cb(err);
+                //node._children = children;
                 if(children.length == 0) {
                     //doesn't have any children
                     cb(null, node);
@@ -306,9 +365,9 @@ router.post('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsRe
     logger.debug("key:"+key+"\n"+JSON.stringify(p, null, 4));
     
     progress_ex.publish(key, p, {}, function(err) {
-        logger.debug("published");
+        //logger.debug("published");
         if(err) return next(err);
-        res.end();
+        res.json({status: 'published'});
     });
     /*
     do_update(key, p, function(err) {
@@ -319,3 +378,4 @@ router.post('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsRe
 });
 
 exports.router  = router;
+
