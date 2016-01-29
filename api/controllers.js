@@ -30,21 +30,6 @@ exports.set_socketio = function(_socket_io) {
 }
 
 exports.init = function(cb) {
-    if(!config.statusPrec) {
-        config.statusPrec = function statusPrec(status) {
-            //TODO - I should make this configurable.. or make so that the latest status takes precedence?
-            switch(status) {
-            case "running": return 4;
-            case "failed": return 3;
-            case "canceled": return 2;
-            case "finished": return 1;
-            case "waiting": return 0;
-            default:
-                return -1;
-            }
-        }
-    }
-
     var connected_once = false;
     
     //do initializations in series
@@ -62,7 +47,7 @@ exports.init = function(cb) {
             var conn = amqp.createConnection(config.progress.amqp, {reconnectBackoffTime: 1000*10});
             conn.on('ready', function() {
                 logger.info("amqp handshake complete");
-                conn.exchange(config.progress.exchange, {autoDelete: false, durable: true, type: 'topic'}, function(ex) {
+                conn.exchange(config.progress.exchange, {autoDelete: false, durable: true, type: 'topic', confirm: true}, function(ex) {
                     progress_ex = ex;
                     logger.info("amqp connected to exchange:"+config.progress.exchange);
                     conn.queue(config.progress.queue, {durable: true, autoDelete: false}, function(q) {
@@ -95,6 +80,7 @@ exports.init = function(cb) {
 }
 
 function get_node(key, cb) {
+    logger.debug("hgetall:"+key);
     db.hgetall(key, function(err, node) {
         if(err) return cb(err);
         if(node) {
@@ -104,19 +90,16 @@ function get_node(key, cb) {
             if(node.start_time) node.start_time = parseInt(node.start_time);
             //if(node.end_time) node.end_time = parseInt(node.end_time);
             if(node.update_time) node.update_time = parseInt(node.update_time);
-
-            //get childlist
-            logger.debug("getting smembers:"+key+"._children");
-            db.smembers(key+"._children", function(err, children) {
-                logger.debug("done");
-                if(err) return cb(err);
-                node._children = children;
-                cb(null, node);
-            });
+            cb(null, node);
         } else {
             cb(null); //not found
         }
     });
+}
+
+function get_children(key, cb) {
+    logger.debug("smembers:"+key+"._children");
+    db.smembers(key+"._children", cb);
 }
 
 function set_node(key, node, cb) {
@@ -131,6 +114,7 @@ function set_node(key, node, cb) {
     }
     //if(node.progress == 1) node.end_time = Date.now(); //mark completion time 
     node.update_time = Date.now(); //mark update time (TODO - so that we can purge old records later)
+    logger.debug("hmset:"+key);
     db.hmset(key, node, cb);
 }
 
@@ -142,80 +126,50 @@ function get_parent_key(key) {
 }
 
 function aggregate_children(key, node, cb) {
-    if(!node._children || node._children.length == 0) {
-        //don't have any children
-        cb();
-    } else {
-        //do weighted aggregation
-        var total_progress = 0;
-        var total_weight = 0;
-        async.eachSeries(node._children, function(child_key, next) {
-            get_node(child_key, function(err, child) {
-                if(err) throw err;
-                if(child !== undefined) { //child could go missing?
-                    //aggregate progess
-                    if(child.progress) {
-                        total_progress += child.progress * child.weight;
-                    }
-                    total_weight += child.weight;
-                }
-                next();
-            });
-        }, function(err) {
-            //update my progress based on child's progress
-            if(total_weight != 0) {
-                node.progress = total_progress / total_weight;
-            }
+    get_children(key, function(err, children) {
+        if(err) return cb(err);
+        if(!children || children.length == 0) {
+            //don't have any children
             cb();
-        });
-    }
-}
-
-function get_state(key, depth, cb) {
-    get_node(key, function(err, node) {
-        if(err) throw err;
-
-        //status not yet posted, or incorrect key
-        if(node === undefined) return cb();
-
-        depth--;
-        if(depth > 0) {
-            if(node._children.length == 0) {
-                //doesn't have any children
-                cb(null, node);
-            } else {
-                node.tasks = [];
-                async.eachSeries(node._children, function(child_key, next) {
-                    //console.log("getting state from "+child_key);
-                    get_state(child_key, depth, function(err, child_state) {
-                        node.tasks.push(child_state);
-                        next();
-                    });
-                }, function(err) {
-                    //TODO should I let client worry about ordering?
-                    node.tasks.sort(function(a,b) {
-                        return a.start_time - b.start_time;
-                    });
-                    cb(err, node);
-                });
-            } 
         } else {
-            cb(null, node); //all done
+            //do weighted aggregation
+            var total_progress = 0;
+            var total_weight = 0;
+            async.eachSeries(children, function(child_key, next) {
+                get_node(child_key, function(err, child) {
+                    if(err) return cb(err);
+                    if(child !== undefined) { //child could go missing?
+                        //aggregate progess
+                        if(child.progress) {
+                            total_progress += child.progress * child.weight;
+                        }
+                        total_weight += child.weight;
+                    }
+                    next();
+                });
+            }, function(err) {
+                if(err) return cb(err);
+                //update my progress based on child's progress
+                if(total_weight != 0) {
+                    node.progress = total_progress / total_weight;
+                }
+                cb();
+            });
         }
     });
 }
 
 function update(key, node, updates, cb) {
     //first aggreage child info (to calculate progress)
-    aggregate_children(key, node, function() {
-        
+    aggregate_children(key, node, function(err) {
+        if(err) return cb(err); 
         //then update the node received
         set_node(key, node, function(err) {
-            if(err) throw err;
+            if(err) return cb(err);
     
             //store updates in reverse order so that parent node goes before child
             //since we are travering from child to parent. sending parent first to socket.io
-            //simplifies client task
+            //simplifies client task (I think it's so that missing parents can get inserted before child)
             updates.unshift(node);
 
             //find parent key
@@ -232,44 +186,49 @@ function update(key, node, updates, cb) {
 
             //get parent to bubble up to
             get_node(parent_key, function(err, p) {
-                if(err) throw err;
+                if(err) return cb(err);
+                if(p === undefined) p = {}; //parent doesn't exist yet
                 
-                //handle case where parent node wasn't reported (children reported first?)
-                if(p === undefined) p = {_children: []}; 
-                
-                //make sure my parent knows me
-                if(!~p._children.indexOf(key))  {
-                    db.sadd(parent_key+"._children", key); 
-                    p._children.push(key);
-                }
+                get_children(parent_key, function(err, children) {
+                    if(err) return cb(err);
 
-                //bubble up msg
-                if(node.msg) p.msg = node.msg;
-                //if(node.name) p.msg = node.name + " " +p.msg; //prefix with node name if available (not very often that this is useful)
-    
-                //finally recurse up to the parent
-                update(parent_key, p, updates, cb);
+                    //make sure my parent knows me
+                    if(!~children.indexOf(key))  {
+                        logger.debug("sadd:"+parent_key+"._children "+key);
+                        db.sadd(parent_key+"._children", key); 
+                    }
+                    
+                    //bubble up msg
+                    if(node.msg) p.msg = node.msg;
+                    //if(node.name) p.msg = node.name + " " +p.msg; //prefix with node name if available (not very often that this is useful)
+        
+                    //finally recurse up to the parent
+                    update(parent_key, p, updates, cb);
+                });
             });
         });
     });
 }
 
-//handled new progress event
+//handled new progress event from amqp
 function progress(p, headers, info, ack) {
     var key = info.routingKey;
-    var updates = [];
-    do_update(key, p, updates, function() {
+    //var updates = [];
+    do_update(key, p, /*updates,*/ function(err) {
+        if(err) throw err; //TODO - should I?
         ack.acknowledge()
     });
 }
 
-function do_update(key, p, updates, cb) {
+function do_update(key, p, /*updates,*/ cb) {
     get_node(key, function(err, node) {
         if(err) return cb(err);
         if(!node) node = {}; //new one
         logger.debug(p);
         for(var k in p) node[k] = p[k]; //merge
+        var updates = [];
         update(key, node, updates, function(err) {
+            if(err) return cb(err);
             emit(updates);
             cb();
         });
@@ -292,6 +251,43 @@ function emit(updates) {
     }
 }
 
+function get_state(key, depth, cb) {
+    get_node(key, function(err, node) {
+        if(err) return cb(err);
+
+        //status not yet posted, or incorrect key
+        if(node === undefined) return cb();
+
+        depth--;
+        if(depth > 0) {
+            get_children(key, function(err, children) {
+                if(err) return cb(err);
+                if(children.length == 0) {
+                    //doesn't have any children
+                    cb(null, node);
+                } else {
+                    node.tasks = [];
+                    async.eachSeries(children, function(child_key, next) {
+                        //console.log("getting state from "+child_key);
+                        get_state(child_key, depth, function(err, child_state) {
+                            node.tasks.push(child_state);
+                            next();
+                        });
+                    }, function(err) {
+                        //TODO should I let client worry about ordering?
+                        node.tasks.sort(function(a,b) {
+                            return a.start_time - b.start_time;
+                        });
+                        cb(err, node);
+                    });
+                } 
+            });
+        } else {
+            cb(null, node); //all done
+        }
+    });
+}
+
 //return current progress status
 router.get('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsRequired: false}),*/ function(req, res, next) {
     //if(!req.query.key) throw new Error("please specify key param");
@@ -308,16 +304,18 @@ router.post('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsRe
     var key = req.params.key;
     var p = req.body;
     logger.debug("key:"+key+"\n"+JSON.stringify(p, null, 4));
+    
+    progress_ex.publish(key, p, {}, function(err) {
+        logger.debug("published");
+        if(err) return next(err);
+        res.end();
+    });
     /*
-    progress_ex.publish(key, p, function(err) {
+    do_update(key, p, function(err) {
         if(err) return next(err);
         res.end();
     });
     */
-    var updates = [];
-    do_update(key, p, updates, function() {
-        res.end();
-    });
 });
 
 exports.router  = router;

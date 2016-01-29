@@ -53,7 +53,7 @@ exports.start = function(cb) {
     controllers.init(function() {
         var server = app.listen(port, host, function() {
             if(cb) cb();
-            console.log("ISDP request handler listening on port %d in %s mode", port, app.settings.env);
+            console.log("progress service API listening on port %d in %s mode", port, app.settings.env);
         });
 
         //init socket.io
