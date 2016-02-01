@@ -3,8 +3,6 @@
 app.controller('HeaderController', ['$scope', 'appconf', '$route', 'toaster', '$http', 'menu',
 function($scope, appconf, $route, toaster, $http, menu) {
     $scope.title = appconf.title;
-    //serverconf.then(function(_c) { $scope.serverconf = _c; });
-    //menu.then(function(_menu) { $scope.menu = _menu; });
     $scope.menu = menu;
 }]);
 
@@ -67,17 +65,10 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
                 progress[key].progress= 1;
                 progress[key].status = "finished";
                 progress[key].msg = "updates made "+count;
-                /*
-                if(key == $scope.testid) {
-                    toaster.success("Simulation finished");
-                    $scope.test_stop();
-                }
-                */
             }
         } else {
             progress[key] = {progress: 0, weight: 1, status: "waiting", msg: "hello", name: "Doing nothing particularly useful.."};
         }
-        //console.dir(progress[key]);
         
         $http.post(appconf.api+'/status/'+key, progress[key])
         .success(function() {
@@ -118,15 +109,6 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
             $scope.status = {};
         });
     }
-
-    /*
-    //create a catalog pointing to different nodes in $scope.status
-    var catalog = {};
-    function update_catalog(node) {
-        catalog[node.key] = node;
-        if(node.tasks) node.tasks.forEach(update_catalog);
-    }
-    */
     
     //TODO - I am not sure if this is really necessary?
     //start refreshing the entire status (to keep it synced) 
@@ -158,9 +140,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
             $scope.show_tasks[key] = false; //false by default
         }
         $scope.show_tasks[key] = !$scope.show_tasks[key];
-        //console.dir($scope.show_tasks);
     }
-
    
     //I might already be connected to socket.io if user gets here via route change
     if(!socket.connected) {
@@ -172,6 +152,8 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         subscribe();
     }
 
+    //if user is visiting _test.1.4, (not _test.1), we are subscribing to room _test.1 
+    //which means I will be receiving a lot of potetntially unnecessary updates
     function subscribe() {
         //grab key up to non _ token (like _test.f771b6c2b8f)
         var tokens = $scope.rootkey.split(".");
@@ -181,23 +163,32 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
             room += tokens[i];
             if(tokens[i][0] != "_") break;
         };
-        console.log("joining room: "+room);
+        //console.log("joining room: "+room);
         socket.emit('join', room); //no cb?
         $scope.$on('$routeChangeStart', function(next, current) { 
-            console.log("leaving room: "+room);
+            //console.log("leaving room: "+room);
             socket.emit('leave', room);
             socket.removeAllListeners();
         });
     }
  
     function process_updates(updates) {
-        //console.dir(updates);
+        //skip updates that belongs to nodes that are too high in the hierarchy 
+        //(since we are subscribing to root element no matter where user is viewing)
+        var update = updates.shift();
+        while(!~update.key.indexOf($scope.rootkey)) {
+            update = updates.shift();
+            if(!update) return; //nothing to handle
+        }
+
         $scope.$apply(function() {
             if(!$scope.status) $scope.status = {};  
             var node = $scope.status;
             //handle root
-            var update = updates.shift();
+            //console.log(update);
             for(var key in update) node[key] = update[key]; //apply update
+            //console.log("updated root");
+            //console.log(node);
             //handle child tasks
             updates.forEach(function(update) {
                 //search the key under tasks
@@ -224,29 +215,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
                         node = update;
                     }
                 }
-                
-                //console.log(update.key);
-                /* this should never happen now.. 
-                if(update.key.indexOf($scope.rootkey) == -1) {
-                    console.log("received key("+update.key+") that's outside of my rootkey:"+$scope.rootkey);
-                    return;
-                }
-                */
-                //console.log(update);
-                /*
-                var node = catalog[update.key];
-                if(node) {
-                    for(var key in update) node[key] = update[key]; //apply update
-                    parent = node;
-                } else {
-                    if(parent.tasks === undefined) parent.tasks = [update];
-                    else parent.tasks.push(update);
-                    catalog[update.key] = update;
-                    parent = update;
-                }
-                */
             });
-            //console.dir($scope.status);
         });
     }
 }]);
