@@ -271,7 +271,12 @@ router.get('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsReq
     var depth = req.query.depth || 1;
     get_state(key, depth, function(err, state) {
         if(err) return next(err);
-        res.json(state);
+        if(!state) {
+            res.json({
+                key: req.params.key,
+                missing: true,
+            });
+        } else res.json(state);
     });
 });
 
