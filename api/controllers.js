@@ -214,6 +214,8 @@ function progress(p, headers, info, ack) {
 
 //emit updates via socket.io
 function emit(updates) {
+    //console.log("emitting");
+    //console.dir(updates);
     if(socket_io && updates.length > 0) {
         var first_update = updates[0];
         //grab upto first non '_' key. (_test.fc1d66d80bd)

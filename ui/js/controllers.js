@@ -163,7 +163,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
             room += tokens[i];
             if(tokens[i][0] != "_") break;
         };
-        //console.log("joining room: "+room);
+        console.log("joining room: "+room);
         socket.emit('join', room); //no cb?
         $scope.$on('$routeChangeStart', function(next, current) { 
             //console.log("leaving room: "+room);
@@ -173,19 +173,29 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
     }
  
     function process_updates(updates) {
+        //console.log(JSON.stringify(updates, null, 4));
+
         //skip updates that belongs to nodes that are too high in the hierarchy 
         //(since we are subscribing to root element no matter where user is viewing)
         var update = updates.shift();
+        //console.log("root");
+        //console.dir(update);
         while(!~update.key.indexOf($scope.rootkey)) {
+            //console.log("root hidden - popping");
             update = updates.shift();
             if(!update) return; //nothing to handle
+            //console.dir(update);
         }
+        if(update.missing == undefined && $scope.status.missing) delete $scope.status.missing;
 
         $scope.$apply(function() {
-            if(!$scope.status) $scope.status = {};  
+            //if(!$scope.status) $scope.status = {};  
+            //console.log("scope.status");
+            //console.dir(update);
             var node = $scope.status;
             //handle root
             //console.log(update);
+            //console.dir(update);
             for(var key in update) node[key] = update[key]; //apply update
             //console.log("updated root");
             //console.log(node);

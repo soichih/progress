@@ -3,7 +3,7 @@
 
 <div class="container-fluid">
     <h2>{{title}}</h2>
-    <div ng-if="status">
+    <div ng-if="!status.missing">
         <ul class="list-group">
             <li class="list-group-item" style="background-color: #f3f3f3;">
                 <div class="pull-right">
@@ -139,9 +139,8 @@
         <br>
     </div>
 
-    <div ng-if="!status">
+    <div ng-if="status.missing">
         <p class="text-muted">Status not reported yet.. or you have specified an incorrect key</p>
     </div>
-
 </div>
 
