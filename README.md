@@ -92,6 +92,15 @@ curl -X POST -H "Content-Type: application/json" -d "{\"status\": \"waiting\", \
 
 ```
 
+Python
+
+```
+
+import requests
+requests.post(os.environ["SCA_PROGRESS_URL"], json={"msg":"Doing things"})
+
+```
+
 Matlab
 
 ```

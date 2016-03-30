@@ -87,11 +87,12 @@ function(appconf, $http, jwtHelper, $sce, scaMessage, scaMenu, $q) {
         },
         top: scaMenu,
         user: null, //to-be-loaded
-        _profile: null, //to-be-loaded
+        //_profile: null, //to-be-loaded
     };
 
     var jwt = localStorage.getItem(appconf.jwt_id);
     if(jwt) menu.user = jwtHelper.decodeToken(jwt);
+    /*
     if(menu.user) {
         $http.get(appconf.profile_api+'/public/'+menu.user.sub).then(function(res) {
             menu._profile = res.data;
@@ -112,6 +113,7 @@ function(appconf, $http, jwtHelper, $sce, scaMessage, scaMenu, $q) {
             }
         });
     }
+    */
     return menu;
 }]);
 
