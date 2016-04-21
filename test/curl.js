@@ -11,9 +11,10 @@ curl -X POST -H "Content-Type: application/json" \
     -d '{"status": "running", "msg":"initializing"}' $api/status/_test.a100
 
 curl -X POST -H "Content-Type: application/json" \
-    -d '{"name": "task prep", "status": "running", "progress": 0.05, "msg":"initializing", "weight": 0}' $api/status/_test.a100.prep
+    -d '{"name": "task prep", "status": "running", "progress": 1, "msg":"initializing", "weight": 0}' $api/status/_test.a100.prep
+curl -X POST -H "Content-Type: application/json" \
+    -d '{"name": "task prep", "status": "running", "progress": 0.50, "msg":"initializing"}' $api/status/_test.a100.task
 
-#following updates weight to 1 on progress server!!!!!!!!!!!!
 curl -X POST -H "Content-Type: application/json" \
     -d '{"progress": 0.3, "msg":"running stuff"}' $api/status/_test.a100.prep
 
