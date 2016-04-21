@@ -193,11 +193,19 @@ function progress(p, headers, info, ack) {
     var key = info.routingKey;
     get_node(key, function(err, node) {
         if(err) throw err; //should I throw?
+
+        //brand new node? initialize some vitals..
+        //setting weight to 0 so that delta.weight below will be 1 when the node is first created..
+        //BUG! this means brand new node can't set weight to 0 - like sca-task(??)
         if(!node) {
             node = {weight: 0, progress: 0}; //new one
         }
+
+        //if not updates to weight / progress, use current values
         if(p.weight == undefined) p.weight = node.weight||1;
         if(p.progress == undefined) p.progress = node.progress||0;
+
+        //calculate amount of weight / progress changes
         var delta = {
             progress: (p.progress*p.weight) - (node.progress*node.weight),
             weight: p.weight - node.weight,
@@ -240,8 +248,9 @@ function get_state(key, depth, cb) {
         depth--;
         if(depth > 0) {
             get_children(key, function(err, children) {
+                console.log("children for "+key);
+                console.dir(children);
                 if(err) return cb(err);
-                //node._children = children;
                 if(children.length == 0) {
                     //doesn't have any children
                     cb(null, node);
@@ -288,11 +297,44 @@ router.post('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsRe
     var p = req.body;
     logger.debug("key:"+key+"\n"+JSON.stringify(p, null, 4));
     
+    //REST API just post to AMQP.. and 
     progress_ex.publish(key, p, {}, function(err) {
         if(err) return next(err);
         res.json({status: 'published'});
     });
 });
 
+//recursively delete node (children first)
+function delete_node(key, cb) {
+    get_node(key, function(err, node) {
+        if(err) next(err);
+        console.dir(node);
+        db.smembers(key+"._children", function(err, children){
+            if(err) next(err);
+            async.eachSeries(children, function(child, next) {
+                delete_node(child, next);
+            }, function(err) {
+                if(err) next(err); //failed to delete one of the child
+                //delete ._children
+                db.del(key+"._children", function(err) {
+                    //finally, delete myself
+                    db.del(key, cb);
+                });
+            });
+        });
+    });
+}
+
+//allows user to delete node (and its children)
+router.delete('/:key', function(req, res, next) {
+    var key = req.params.key;
+    console.log("deleting "+key);
+    delete_node(key, function(err, count) {
+        if(err) return next(err);
+        res.json({status: "removed "+key+" and its children"}); 
+    });
+});
+
 exports.router  = router;
+
 

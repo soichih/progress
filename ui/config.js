@@ -16,6 +16,8 @@ angular.module('app.config', [])
         opts: {path: '/api/progress/socket.io'},
     },
 
+    auth_api: '../api/auth',
+
     profile_api: '../api/profile',
     profile_url: '../profile',
 
