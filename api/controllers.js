@@ -132,7 +132,6 @@ function update(key, node, updates, delta, cb) {
         //find parent key by stipping the last segment of the key
         var parent_key = null;
         var pos = key.lastIndexOf(".");
-        console.log(pos);
         if(pos !== -1) parent_key = key.substring(0, pos);
         if(parent_key == null) return cb(null); //we've bubbled up to the root... all done
 
@@ -227,13 +226,6 @@ function progress(p, headers, info, ack) {
             if(p.weight === undefined) delta.w = 1; //if not, assume 1
         }
 
-        /*
-        console.log("computing delta from");
-        console.dir(node);
-        console.log("to");
-        console.dir(p); 
-        console.dir(delta);
-        */
         for(var k in p) node[k] = p[k]; //update values as requested
         var updates = []; //list updates to be emitted to subscribers(ui)
         update(key, node, updates, delta, function(err) {
@@ -270,8 +262,6 @@ function get_state(key, depth, cb) {
         depth--;
         if(depth > 0) {
             get_children(key, function(err, children) {
-                //console.log("children for "+key);
-                //console.dir(children);
                 if(err) return cb(err);
                 if(children.length == 0) {
                     //doesn't have any children
@@ -350,7 +340,7 @@ function delete_node(key, cb) {
 //allows user to delete node (and its children)
 router.delete('/:key', function(req, res, next) {
     var key = req.params.key;
-    console.log("deleting "+key);
+    logger.debug("deleting "+key);
     delete_node(key, function(err, count) {
         if(err) return next(err);
         res.json({status: "removed "+key+" and its children"}); 
