@@ -169,7 +169,7 @@ function update(key, node, updates, delta, cb) {
             if(newparent) parent_delta.w = 1;
             
             //always bubble up msg
-            if(node.msg) p.msg = node.msg;
+            if(node.msg) new_parent.msg = node.msg;
 
             update(parent_key, new_parent, updates, parent_delta, function(err) {
                 if(err) return cb(err);
