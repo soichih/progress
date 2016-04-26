@@ -24,7 +24,7 @@ app.use(compress());
 //if(config.express.jwt) app.use(require('express-jwt')(config.express.jwt));
 
 //setup routes
-app.get('/health', function(req, res) { res.json({status: 'running'}); });
+app.get('/health', function(req, res) { res.json({status: 'ok'}); });
 /*
 app.get('/status', controllers.status);
 app.post('/update', controllers.update);
