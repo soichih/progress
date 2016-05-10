@@ -59,3 +59,9 @@ p.status-msg {
 .status-failed {
   color: #f04124;
 }
+.status-finished {
+  color: #43ac6a;
+}
+h3.status-running {
+  color: #008cba;
+}
