@@ -9,6 +9,7 @@ var bodyParser = require('body-parser');
 var winston = require('winston');
 var expressWinston = require('express-winston');
 var compress = require('compression');
+var cors = require('cors');
 
 //mine
 var config = require('./config');
@@ -17,6 +18,7 @@ var controllers = require('./controllers');
 
 //init express app
 var app = express();
+app.use(cors());
 app.use(bodyParser.json()); 
 app.use(expressWinston.logger(config.logger.winston));
 app.use(compress());
