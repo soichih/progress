@@ -144,4 +144,7 @@ Should I use Server-Sent-Event - instead of socket.io? socket.io might be a bit 
 * Add link to sub-level progress if child has more than 4 level
 * deploy to core-test1/test2
 
-* peformance issue when there are a lot of child nodes
+* allow user to set *expected* progress. like..  `{progress: 0.6, in: 3600}` This request doesn't immediately set the progress
+bar to 60%, but it will gradually go from current percentage (whatever that is) to 60% in 3600 seconds. This will be useful
+for command that normally takes about the same amount of time to run each time, but you don't (or can't) want to report 
+progress manually.
