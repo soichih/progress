@@ -1,9 +1,30 @@
 define({ "api": [
   {
+    "type": "delete",
+    "url": "/:key",
+    "title": "Remove Progress",
+    "group": "Status",
+    "description": "<p>Remove all progress nodes under a key</p>",
+    "success": {
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "HTTP/1.1 200 OK\n{\"status\":\"removed _test.scott1 and its children\"}",
+          "type": "json"
+        }
+      ]
+    },
+    "version": "0.0.0",
+    "filename": "api/controllers.js",
+    "groupTitle": "Status",
+    "name": "DeleteKey"
+  },
+  {
     "type": "get",
     "url": "/:key",
-    "title": "Get Progress detail",
+    "title": "Get Progress",
     "group": "Status",
+    "description": "<p>Returns all tasks that belongs to a user.</p>",
     "parameter": {
       "fields": {
         "Parameter": [
@@ -17,7 +38,6 @@ define({ "api": [
         ]
       }
     },
-    "description": "<p>Returns all tasks that belongs to a user. This is currently a public interface</p>",
     "success": {
       "examples": [
         {
@@ -31,5 +51,66 @@ define({ "api": [
     "filename": "api/controllers.js",
     "groupTitle": "Status",
     "name": "GetKey"
+  },
+  {
+    "type": "post",
+    "url": "/:key",
+    "title": "Update Progress",
+    "group": "Status",
+    "description": "<p>Post a new progress update This API simply forward the request to AMQP server that this service listens to.</p>",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "Number",
+            "optional": true,
+            "field": "weight",
+            "description": "<p>Weight of the node (used to compute parent progress)</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "String",
+            "optional": true,
+            "field": "name",
+            "description": "<p>Name/title of the node</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "String",
+            "optional": true,
+            "field": "msg",
+            "description": "<p>Status message</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "Number",
+            "optional": true,
+            "field": "progress",
+            "description": "<p>Progress of the node (0 to 1.0)</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "String",
+            "optional": true,
+            "field": "status",
+            "description": "<p>Status of this node. Please use one of following: waiting / running / finished / failed / canceled / (paused)</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "HTTP/1.1 200 OK\n{\"status\":\"published\"}",
+          "type": "json"
+        }
+      ]
+    },
+    "version": "0.0.0",
+    "filename": "api/controllers.js",
+    "groupTitle": "Status",
+    "name": "PostKey"
   }
 ] });

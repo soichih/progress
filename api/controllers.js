@@ -163,6 +163,8 @@ function update(key, node, updates, delta, cb) {
             //finally update parent progress (if computable)
             if(new_parent._children_w != 0) {
                 new_parent.progress = new_parent._children_pw / new_parent._children_w;
+            } else {
+                //if children_w is 0, parent progress should be set to the average of children_p (but I don't have such info..)
             }
 
             var parent_delta = delta_calc(p, new_parent);
