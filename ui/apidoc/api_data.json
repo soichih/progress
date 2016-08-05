@@ -42,7 +42,7 @@
       "examples": [
         {
           "title": "Success-Response:",
-          "content": "HTTP/1.1 200 OK\n{\"_total_weight\":\"0\",\"_total_progress\":\"0\",\"msg\":\"doing 0.5098086714278907\",\"key\":\"_test.100\",\"weight\":1,\"start_time\":1454074695846,\"update_time\":1454074834012,\"tasks\":[{\"_total_weight\":\"0\",\"_total_progress\":\"0.22608440299518406\",\"msg\":\"doing 0.5098086714278907\",\"key\":\"_test.100.1\",\"weight\":1,\"start_time\":1454074695843,\"update_time\":1454074834011}]}",
+          "content": "HTTP/1.1 200 OK\n{\n    \"msg\":\"doing 0.5098086714278907\",\n    \"key\":\"_test.100\",\n    \"weight\":1,\n    \"start_time\":1454074695846,\n    \"update_time\":1454074834012,\n    \"tasks\":    [\n        {\n            \"_total_weight\":\"0\",\n            \"_total_progress\":\"0.22608440299518406\",\n            \"msg\":\"doing 0.5098086714278907\",\n            \"key\":\"_test.100.1\",\n            \"weight\":1,\n            \"start_time\":1454074695843,\n            \"update_time\":1454074834011\n        }\n    ]\n}",
           "type": "json"
         }
       ]

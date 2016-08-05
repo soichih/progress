@@ -313,7 +313,24 @@ router.get('/status/:key', handle_get_status); //DEPRECATED - use without /statu
  * 
  * @apiSuccessExample {json}    Success-Response:
  *      HTTP/1.1 200 OK
- *      {"_total_weight":"0","_total_progress":"0","msg":"doing 0.5098086714278907","key":"_test.100","weight":1,"start_time":1454074695846,"update_time":1454074834012,"tasks":[{"_total_weight":"0","_total_progress":"0.22608440299518406","msg":"doing 0.5098086714278907","key":"_test.100.1","weight":1,"start_time":1454074695843,"update_time":1454074834011}]}
+ *      {
+ *          "msg":"doing 0.5098086714278907",
+ *          "key":"_test.100",
+ *          "weight":1,
+ *          "start_time":1454074695846,
+ *          "update_time":1454074834012,
+ *          "tasks":    [
+ *              {
+ *                  "_total_weight":"0",
+ *                  "_total_progress":"0.22608440299518406",
+ *                  "msg":"doing 0.5098086714278907",
+ *                  "key":"_test.100.1",
+ *                  "weight":1,
+ *                  "start_time":1454074695843,
+ *                  "update_time":1454074834011
+ *              }
+ *          ]
+ *      }
  *
  */
 router.get('/:key', handle_get_status);
