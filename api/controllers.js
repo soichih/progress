@@ -288,10 +288,9 @@ function get_state(key, depth, cb) {
     });
 }
 
-//return current progress status
-router.get('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsRequired: false}),*/ function(req, res, next) {
+function handle_get_status(req, res, next) {
     var key = req.params.key;
-    var depth = req.query.depth || 1;
+    var depth = req.query.depth||1;
     get_state(key, depth, function(err, state) {
         if(err) return next(err);
         if(!state) {
@@ -301,10 +300,24 @@ router.get('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsReq
             });
         } else res.json(state);
     });
-});
+}
+router.get('/status/:key', handle_get_status); //DEPRECATED - use without /status
+/**
+ * @api {get} /:key             Get Progress
+ * @apiGroup                    Status
+ * @apiDescription              Returns all tasks that belongs to a user. 
+ *
+ * @apiParam {Number} [depth]   How deep you want to traverse the progress tree. Default to 1
+ * 
+ * @apiSuccessExample {json}    Success-Response:
+ *      HTTP/1.1 200 OK
+ *      {"_total_weight":"0","_total_progress":"0","msg":"doing 0.5098086714278907","key":"_test.100","weight":1,"start_time":1454074695846,"update_time":1454074834012,"tasks":[{"_total_weight":"0","_total_progress":"0.22608440299518406","msg":"doing 0.5098086714278907","key":"_test.100.1","weight":1,"start_time":1454074695843,"update_time":1454074834011}]}
+ *
+ */
+router.get('/:key', handle_get_status);
 
-//let's make this public for now.. in the future, progress service can issue its own authentication token (like imagex service?)
-router.post('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsRequired: false}),*/ function(req, res, next) {
+//TODO - let's make this public for now.. in the future, progress service can issue its own authentication token (like imagex service?)
+function handle_post_status(req, res, next) {
     var key = req.params.key;
     var p = req.body;
     logger.debug("key:"+key+"\n"+JSON.stringify(p, null, 4));
@@ -314,7 +327,25 @@ router.post('/status/:key', /*jwt({secret: config.express.jwt.pub, credentialsRe
         if(err) return next(err);
         res.json({status: 'published'});
     });
-});
+}
+router.post('/status/:key', handle_post_status); //DEPRECATED - use without /status
+/**
+ * @api {post} /:key            Update Progress
+ * @apiGroup                    Status
+ * @apiDescription              Post a new progress update This API simply forward the request to AMQP server that this service listens to.
+ *
+ * @apiParam {Number} [weight]  Weight of the node (used to compute parent progress)
+ * @apiParam {String} [name]    Name/title of the node
+ * @apiParam {String} [msg]     Status message
+ * @apiParam {Number} [progress] Progress of the node (0 to 1.0)
+ * @apiParam {String} [status]  Status of this node. Please use one of following: waiting / running / finished / failed / canceled / (paused)
+ *
+ * @apiSuccessExample {json}    Success-Response:
+ *      HTTP/1.1 200 OK
+ *      {"status":"published"}
+ *
+ */
+router.post('/:key', handle_post_status);
 
 //recursively delete node (children first)
 function delete_node(key, cb) {
@@ -337,7 +368,16 @@ function delete_node(key, cb) {
     });
 }
 
-//allows user to delete node (and its children)
+//TODO - I really need to implement access control - anyone can delete the whole _sca...
+/**
+ * @api {delete} /:key  Remove Progress 
+ * @apiGroup            Status
+ * @apiDescription      Remove all progress nodes under a key
+ *
+ * @apiSuccessExample {json}    Success-Response:
+ *      HTTP/1.1 200 OK
+ *      {"status":"removed _test.scott1 and its children"}                        
+ */
 router.delete('/:key', function(req, res, next) {
     var key = req.params.key;
     logger.debug("deleting "+key);

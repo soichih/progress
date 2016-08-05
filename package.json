@@ -7,6 +7,7 @@
     "test": "test"
   },
   "scripts": {
+    "apidoc": "apidoc -i api/ -o ui/apidoc/",
     "test": "mocha"
   },
   "repository": {
