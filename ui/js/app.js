@@ -92,28 +92,6 @@ function(appconf, $http, jwtHelper, $sce, scaMessage, scaMenu, $q) {
 
     var jwt = localStorage.getItem(appconf.jwt_id);
     if(jwt) menu.user = jwtHelper.decodeToken(jwt);
-    /*
-    if(menu.user) {
-        $http.get(appconf.profile_api+'/public/'+menu.user.sub).then(function(res) {
-            menu._profile = res.data;
-            if(res.data) {
-                //logged in, but does user has email?
-                if(res.data.email) {
-                    return menu; //TODO - return return to what?
-                } else {
-                    //force user to update profile
-                    //TODO - do I really need to?
-                    scaMessage.info("Please update your profile before using application.");
-                    sessionStorage.setItem('profile_settings_redirect', window.location.toString());
-                    document.location = appconf.profile_url;
-                }
-            } else {
-                //not logged in.
-                return menu; //TODO return to what?
-            }
-        });
-    }
-    */
     return menu;
 }]);
 

@@ -1,6 +1,6 @@
 'use strict';
 
-app.controller('HeaderController', ['$scope', 'appconf', '$route', 'toaster', '$http', 'menu',
+app.controller('HeaderController', ['$scope', 'appconf', '$route', 'toaster', '$http', 'menu', 
 function($scope, appconf, $route, toaster, $http, menu) {
     $scope.title = appconf.title;
     $scope.menu = menu;
@@ -93,6 +93,7 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
     $scope.debug = appconf.debug;
     $scope.title = appconf.title;
     $scope.rootkey = $routeParams.key;
+    $scope.hidemenu = $location.search().hidemenu;
 
     load_data(); 
 

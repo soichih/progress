@@ -62,8 +62,6 @@ p.status-msg {
 .status-finished {
   color: #43ac6a;
 }
-/*
-h3.status-running {
-color: #008cba;
+.progress-hidemenu {
+  background-color: gray;
 }
-*/
