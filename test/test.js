@@ -8,7 +8,7 @@ var uuid = require('node-uuid');
 var winston = require('winston');
 
 //mine
-var config = require('../api/config/config');
+var config = require('../api/config');
 var logger = new winston.Logger(config.logger.winston);
 var controllers = require('../api/controllers');
 var app = require('../api/server').app;
