@@ -1,5 +1,6 @@
 nohup_server.*
 node_modules
-config
+api/config/index.js
+api/config/auth.pub
 *.log
 barn

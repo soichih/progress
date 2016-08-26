@@ -4,5 +4,5 @@
 
 #nohup nodemon ./progress.js &
 pm2 delete progress
-pm2 start progress.js --watch --ignore-watch="\.log$"
+pm2 start progress.js --name sca-progress --watch --ignore-watch="\.log$"
 pm2 save
