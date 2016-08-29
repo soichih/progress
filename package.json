@@ -22,16 +22,16 @@
   "license": "BSD",
   "dependencies": {
     "amqp": "~0.2.6",
-    "async": "~1.4.2",
-    "body-parser": "~1.13.3",
-    "compression": "~1.5.2",
-    "cors": "^2.7.1",
-    "express": "~4.13.3",
-    "express-jwt": "~3.0.1",
-    "express-winston": "~0.3.1",
+    "async": "~2.0.1",
+    "body-parser": "~1.15.2",
+    "compression": "~1.6.2",
+    "cors": "^2.8.0",
+    "express": "~4.14.0",
+    "express-jwt": "~3.4.0",
+    "express-winston": "~2.0.0",
     "redis": "~2.6.2",
     "socket.io": "~1.4.8",
-    "winston": "~1.0.1"
+    "winston": "~2.2.0"
   },
   "devDependencies": {
     "supertest": "~1.0.1",

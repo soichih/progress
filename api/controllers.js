@@ -211,7 +211,14 @@ function delta_calc(old, _new) {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  main entry point
+//
 function progress(p, headers, info, ack) {
+    //remove null values (hmset doesn't allow setting null value)
+    for(var k in p) if(p[k] === null) delete p[k]; 
+
     var key = info.routingKey;
     get_node(key, function(err, node) {
         if(err) throw err; //should I throw?

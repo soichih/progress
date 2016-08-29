@@ -37,12 +37,11 @@ app.use('/', require('./controllers').router);
 app.use(expressWinston.errorLogger(config.logger.winston)); 
 app.use(function(err, req, res, next) {
     if(typeof err == "string") err = {message: err};
-    logger.error(err);
-    logger.error(err);
-    if(err.stack) {
-        logger.error(err.stack);
-        err.stack = "hidden"; //for ui
-    }
+
+    //log error..
+    logger.info(err);
+
+    if(err.stack) err.stack = "hidden"; //don't sent call stack to UI - for security reason
     res.status(err.status || 500);
     res.json(err);
 });
