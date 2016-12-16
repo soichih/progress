@@ -58,7 +58,7 @@ exports.init = function(cb) {
     
                         //sometime amqp re-connect.. I don't need to redo the rest of init for that.
                         if(!connected_once) {
-                            connected_once = false;
+                            connected_once = true;
                             done();
                         }
                     });
