@@ -71,14 +71,15 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
         }
         
         $http.post(appconf.api+'/status/'+key, progress[key])
-        .then(function() {
+        .then(function(res) {
             //console.log("update posted");
             $scope.msg_key = key;
             $scope.msg = progress[key];
             mutex = false;
-        }, function(err) {
+        }, function(res) {
             //timeout doesn't get here.. if server is down
-            toaster.error(err);
+            if(res.data && res.data.message) toaster.error(res.data.message);
+            else toaster.error(res.statusText);
             mutex = false;
         });
     }
@@ -99,12 +100,14 @@ function($scope, appconf, $route, toaster, $http, $cookies, $routeParams, $locat
     function load_data() {
         //console.log("requesting full status");
         $http.get(appconf.api+'/status/'+$scope.rootkey+'?depth=5')
-        .then(function(data) {
-            $scope.status = data;
+        .then(function(res) {
+            $scope.status = res.data;
             //update_catalog($scope.status);
             socket.on('update', process_updates);
-        }, function(err) {
-            toaster.error("Failed to load progress information: "+err.message);
+        }, function(res) {
+            if(res.data && res.data.message) toaster.error(res.data.message);
+            else toaster.error(res.statusText);
+            //toaster.error("Failed to load progress information: "+err.message);
             $scope.status = {};
         });
     }
