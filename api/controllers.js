@@ -15,25 +15,53 @@ var router = express.Router();
 //mine
 var config = require('./config');
 var logger = new winston.Logger(config.logger.winston);
+var server = require('./server');
 
 //polyfill?
 function assert(condition, message) {
     if (!condition) throw new Error(message || "Assertion failed");
 }
 
-var db = null;
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// connect to redis
+//
+var db = redis.createClient(config.progress.redis.port, config.progress.redis.server);
+db.on('connect', function() {
+    logger.info("connected to redis");
+});
+db.on('error', function(err) {
+    logger.error(err);
+});
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// connect to amqp
+//
 var progress_q = null;
 var progress_ex = null; //for /update
-var socket_io = null; //socket io
+var conn = amqp.createConnection(config.progress.amqp, {reconnectBackoffTime: 1000*10});
+conn.on('ready', function() {
+    logger.info("amqp ready");
+    conn.exchange(config.progress.exchange, {autoDelete: false, durable: true, type: 'topic', confirm: true}, function(ex) {
+        progress_ex = ex;
+        logger.info("amqp connected to exchange:"+config.progress.exchange);
+        conn.queue(config.progress.queue, {durable: true, autoDelete: false}, function(q) {
+            progress_q = q;
+            logger.info("bind/subscribe to queue:"+config.progress.queue);
+            q.bind(ex, '#');
+            q.subscribe({ack: true}, progress);
+        });
+    });
+});
+conn.on('error', function(err) {
+    logger.error("amqp received error.", err);
+});
 
-exports.set_socketio = function(_socket_io) {
-    socket_io = _socket_io;
-}
-
-exports.init = function(cb) {
-    var connected_once = false;
-    
     //do initializations in series
+    /*
+    var connected_once = false;
     async.series([
         //connect to redis
         function(done) {
@@ -79,6 +107,10 @@ exports.init = function(cb) {
         if(cb) cb();
     });
 }
+*/
+
+var socket_io = null; //socket io
+exports.set_socketio = function(_socket_io) { socket_io = _socket_io; }
 
 function get_node(key, cb) {
     //logger.debug("hgetall:"+key);
@@ -310,6 +342,37 @@ function handle_get_status(req, res, next) {
         } else res.json(state);
     });
 }
+
+router.get('/health', function(req, res, next) { 
+    var now = Date.now();
+    async.series([
+        function(cb) {
+            //publish..
+            progress_ex.publish("_test.health", {time: now, state: "testing"}, {}, cb);
+        },
+        function(cb) {
+            //wait for a while for my message to get processed
+            setTimeout(cb, 100);  //100msec should be enough?
+        },
+        function(cb) {
+            //query
+            get_state("_test.health", 1, function(err, state) {
+                if(err) return cb(err);
+                if(!state) return cb("couldn't find test progress");
+                if(state.state != "testing") return cb("_test.health/state is not correct");
+                if(state.time != now) return cb("_test.health/time is not correct.. maybe too busy?");
+                cb();
+            });
+        },
+    ], function(err) {
+        if(err) {
+            res.json({status: 'failed', message: err});
+            return;
+        }
+        res.json({status: 'ok'});
+    });
+});
+
 router.get('/status/:key', handle_get_status); //DEPRECATED - use without /status
 /**
  * @api {get} /:key             Get Progress
@@ -413,6 +476,5 @@ router.delete('/:key', function(req, res, next) {
     });
 });
 
-exports.router  = router;
 
-
+exports.router = router;

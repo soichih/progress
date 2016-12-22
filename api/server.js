@@ -10,6 +10,7 @@ var winston = require('winston');
 var expressWinston = require('express-winston');
 var compress = require('compression');
 var cors = require('cors');
+var redis = require('redis');
 
 //mine
 var config = require('./config');
@@ -23,14 +24,6 @@ app.use(bodyParser.json());
 app.use(expressWinston.logger(config.logger.winston));
 app.use(compress());
 
-//if(config.express.jwt) app.use(require('express-jwt')(config.express.jwt));
-
-//setup routes
-app.get('/health', function(req, res) { res.json({status: 'ok'}); });
-/*
-app.get('/status', controllers.status);
-app.post('/update', controllers.update);
-*/
 app.use('/', require('./controllers').router);
 
 //error handling
@@ -56,25 +49,25 @@ exports.app = app;
 exports.start = function(cb) {
     var port = process.env.PORT || config.express.port || '8080';
     var host = process.env.HOST || config.express.host || 'localhost';
-    controllers.init(function() {
-        var server = app.listen(port, host, function() {
-            if(cb) cb();
-            console.log("progress service API listening on port %d in %s mode", port, app.settings.env);
-        });
-
-        //init socket.io
-        var io = require('socket.io').listen(server);
-        io.on('connection', function (socket) {
-            socket.on('join', function (key) {
-                console.log("socket.io join "+key);
-                socket.join(key);
-            });
-            socket.on('leave', function (key) {
-                console.log("socket.io leave "+key);
-                socket.leave(key);
-            });
-        });
-        controllers.set_socketio(io);
+    //controllers.init(function() {
+    var server = app.listen(port, host, function() {
+        if(cb) cb();
+        console.log("progress service API listening on port %d in %s mode", port, app.settings.env);
     });
+
+    //init socket.io
+    var io = require('socket.io').listen(server);
+    io.on('connection', function (socket) {
+        socket.on('join', function (key) {
+            console.log("socket.io join "+key);
+            socket.join(key);
+        });
+        socket.on('leave', function (key) {
+            console.log("socket.io leave "+key);
+            socket.leave(key);
+        });
+    });
+    controllers.set_socketio(io);
+    //});
 };
 

@@ -96,7 +96,7 @@ function(appconf, $http, jwtHelper, $sce, scaMessage, scaMenu, $q) {
 }]);
 
 //configure route
-app.config(['$routeProvider', 'appconf', function($routeProvider, appconf) {
+app.config(function($routeProvider, appconf, $locationProvider) {
     $routeProvider
     .when('/about', {
         templateUrl: 't/about.html',
@@ -109,7 +109,9 @@ app.config(['$routeProvider', 'appconf', function($routeProvider, appconf) {
     .otherwise({
         redirectTo: '/about'
     });
-}]);
+
+    //$locationProvider.hashPrefix('');
+});
 
 //configure httpProvider to send jwt unless skipAuthorization is set in config (not tested yet..)
 app.config(['appconf', '$httpProvider', 'jwtInterceptorProvider', 
