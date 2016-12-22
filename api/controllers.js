@@ -345,6 +345,7 @@ function handle_get_status(req, res, next) {
 
 router.get('/health', function(req, res, next) { 
     var now = Date.now();
+    var ret = null;
     async.series([
         function(cb) {
             //publish..
@@ -359,6 +360,7 @@ router.get('/health', function(req, res, next) {
             get_state("_test.health", 1, function(err, state) {
                 if(err) return cb(err);
                 if(!state) return cb("couldn't find test progress");
+                ret = state;
                 if(state.state != "testing") return cb("_test.health/state is not correct");
                 if(state.time != now) return cb("_test.health/time is not correct.. maybe too busy?");
                 cb();
@@ -366,10 +368,10 @@ router.get('/health', function(req, res, next) {
         },
     ], function(err) {
         if(err) {
-            res.json({status: 'failed', message: err});
+            res.json({status: 'failed', message: err, _state: ret});
             return;
         }
-        res.json({status: 'ok'});
+        res.json({status: 'ok', _state: ret});
     });
 });
 
